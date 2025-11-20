@@ -55,7 +55,7 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ child
             const cachedData = JSON.parse(localStorage.getItem(SHADER_PREVIEWS_CACHE_KEY) || '{}');
             const defaultShadersHash = simpleHash(JSON.stringify(SHADERS));
             const previews = cachedData.previews || {};
-            
+
             const savedShaders = JSON.parse(localStorage.getItem(USER_SHADERS_STORAGE_KEY) || '{}');
 
             if (SHADERS[key as keyof typeof SHADERS]) {
@@ -66,16 +66,62 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ child
                     dataUrl: dataUrl
                 };
             }
-            
+
             localStorage.setItem(SHADER_PREVIEWS_CACHE_KEY, JSON.stringify({ version: defaultShadersHash, previews }));
         } catch(e) {
             console.error("Failed to update preview cache", e);
         }
     }, []);
-    
+
     const handleModelPreviewGenerated = useCallback((key: string, dataUrl: string) => {
         setModelPreviews(prev => ({ ...prev, [key]: dataUrl }));
     }, []);
+
+    // Load pre-generated PNG previews for default shaders (optimized with parallel loading)
+    useEffect(() => {
+        const loadPreGeneratedPreviews = async () => {
+            const previews: Record<string, string> = {};
+
+            // Process in batches to avoid overwhelming the browser with too many concurrent requests
+            const BATCH_SIZE = 30;
+            const batches: string[][] = [];
+
+            for (let i = 0; i < defaultShaderKeys.length; i += BATCH_SIZE) {
+                batches.push(defaultShaderKeys.slice(i, i + BATCH_SIZE));
+            }
+
+            // Process batches sequentially, but items within each batch in parallel
+            for (const batch of batches) {
+                const batchResults = await Promise.allSettled(
+                    batch.map(async (shaderKey) => {
+                        const previewUrl = `/assets/shaders-previews/${shaderKey}.png`;
+                        // Use HEAD request for faster existence check (doesn't download the full image)
+                        const response = await fetch(previewUrl, { method: 'HEAD' });
+                        if (response.ok) {
+                            return { shaderKey, previewUrl };
+                        }
+                        return null;
+                    })
+                );
+
+                // Collect successful results from this batch
+                const batchPreviews: Record<string, string> = {};
+                batchResults.forEach((result) => {
+                    if (result.status === 'fulfilled' && result.value) {
+                        batchPreviews[result.value.shaderKey] = result.value.previewUrl;
+                        previews[result.value.shaderKey] = result.value.previewUrl;
+                    }
+                });
+
+                // Update state incrementally for better UX (progressive loading)
+                if (Object.keys(batchPreviews).length > 0) {
+                    setShaderPreviews(prev => ({ ...prev, ...batchPreviews }));
+                }
+            }
+        };
+
+        loadPreGeneratedPreviews();
+    }, [defaultShaderKeys]);
 
     useEffect(() => {
         if (selectedItem && !allDisplayableKeys.includes(selectedItem)) {
@@ -85,7 +131,7 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ child
             const firstModel = Object.keys(userModels)[0];
             const firstHtml = Object.keys(userHtml)[0];
             const firstDefaultShader = defaultShaderKeys[0];
-            
+
             setSelectedItem(firstUserShader || firstImage || firstVideo || firstModel || firstHtml || firstDefaultShader || '');
         }
     }, [allDisplayableKeys, selectedItem, setSelectedItem, userShaders, userImages, userVideos, userModels, userHtml, defaultShaderKeys]);
@@ -96,7 +142,7 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ child
                 const newShaders = { ...prevShaders };
                 delete newShaders[key];
                 localStorage.setItem(USER_SHADERS_STORAGE_KEY, JSON.stringify(newShaders));
-                
+
                 // Remove from preview cache
                 try {
                     const cachedData = JSON.parse(localStorage.getItem(SHADER_PREVIEWS_CACHE_KEY) || '{}');
@@ -217,7 +263,7 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ child
             }
             return false;
         };
-        
+
         if (renameInState(userShaders, setUserShaders, USER_SHADERS_STORAGE_KEY)) {
             setShaderPreviews(prev => {
                 const newPreviews = { ...prev };
@@ -243,7 +289,7 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ child
             return true;
         }
         if (renameInState(userHtml, setUserHtml, USER_HTML_STORAGE_KEY)) return true;
-        
+
         return false;
     }, [userShaders, userImages, userVideos, userModels, userHtml]);
 
@@ -253,7 +299,7 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ child
         const imageUpdates: UserImages = {};
         const videoUpdates: UserVideos = {};
         const modelUpdates: UserModels = {};
-        
+
         for (const { name, file } of files) {
             newMediaKeys.push(name);
             if (file.type.startsWith('image/')) {
@@ -286,7 +332,7 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ child
                         const size = box.getSize(new THREE.Vector3());
                         const maxDim = Math.max(size.x, size.y, size.z);
                         const scale = maxDim > 0 ? 1.5 / maxDim : 1.0;
-                        
+
                         const wireframeGeometry = new THREE.WireframeGeometry(geometry);
 
                         modelUpdates[name] = { geometry, wireframeGeometry, file, center, scale };
@@ -304,12 +350,12 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ child
         if (Object.keys(imageUpdates).length > 0) setUserImages(prev => ({ ...prev, ...imageUpdates }));
         if (Object.keys(videoUpdates).length > 0) setUserVideos(prev => ({ ...prev, ...videoUpdates }));
         if (Object.keys(modelUpdates).length > 0) setUserModels(prev => ({...prev, ...modelUpdates}));
-        
+
         if (newMediaKeys.length > 0) setSelectedItem(newMediaKeys[newMediaKeys.length - 1]);
-        
+
         return newMediaKeys;
     }, [setSelectedItem, handleModelPreviewGenerated]);
-    
+
     useEffect(() => {
         // Initial loading is now handled by SessionContext
     }, []);

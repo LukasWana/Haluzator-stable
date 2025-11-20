@@ -225,7 +225,54 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
         const shadersToGenerate: Record<string, string> = {};
         const isDefaultCacheValid = cachedData.version === defaultShadersHash;
 
-        Object.keys(SHADERS).forEach(key => {
+        // Check for pre-generated PNG previews first (optimized with parallel loading)
+        const checkPreGeneratedPreviews = async (keys: string[]) => {
+            const preGeneratedPreviews: Record<string, string> = {};
+            const remainingKeys: string[] = [];
+
+            // Process in batches to avoid overwhelming the browser
+            const BATCH_SIZE = 30;
+            const batches: string[][] = [];
+
+            for (let i = 0; i < keys.length; i += BATCH_SIZE) {
+                batches.push(keys.slice(i, i + BATCH_SIZE));
+            }
+
+            // Process batches sequentially, but items within each batch in parallel
+            for (const batch of batches) {
+                const batchResults = await Promise.allSettled(
+                    batch.map(async (key) => {
+                        const previewUrl = `/assets/shaders-previews/${key}.png`;
+                        const response = await fetch(previewUrl, { method: 'HEAD' });
+                        if (response.ok) {
+                            return { key, previewUrl };
+                        }
+                        return { key, previewUrl: null };
+                    })
+                );
+
+                batchResults.forEach((result, index) => {
+                    if (result.status === 'fulfilled') {
+                        if (result.value.previewUrl) {
+                            preGeneratedPreviews[result.value.key] = result.value.previewUrl;
+                        } else {
+                            remainingKeys.push(result.value.key);
+                        }
+                    } else {
+                        // If promise rejected, add to remaining keys
+                        remainingKeys.push(batch[index]);
+                    }
+                });
+            }
+
+            return { preGeneratedPreviews, remainingKeys };
+        };
+
+        const { preGeneratedPreviews, remainingKeys } = await checkPreGeneratedPreviews(Object.keys(SHADERS));
+        Object.assign(previewsToSet, preGeneratedPreviews);
+
+        // For remaining shaders, check cache or generate
+        remainingKeys.forEach(key => {
             if (isDefaultCacheValid && typeof cachedPreviews[key] === 'string') {
                 previewsToSet[key] = cachedPreviews[key];
             } else {

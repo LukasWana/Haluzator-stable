@@ -6,32 +6,36 @@
   "main": "dist-electron/main.js",
   "scripts": {
     "dev": "vite",
-    "build": "vite build && node build-electron.js && electron-builder",
-    "build:win": "vite build && node build-electron.js && electron-builder --win",
-    "build:win:portable": "node clean-release.js && node copy-media.js && vite build && node build-electron.js && electron-builder --config electron-builder-portable.json --win",
-    "build:win:dir": "vite build && node build-electron.js && electron-builder --win dir",
-    "build:mac": "vite build && node build-electron.js && electron-builder --mac",
-    "build:linux": "vite build && node build-electron.js && electron-builder --linux",
+    "generate-previews": "npx tsx generate-shader-previews.ts",
+    "build": "npm run generate-previews && vite build && node build-electron.js && electron-builder",
+    "build:win": "npm run generate-previews && vite build && node build-electron.js && electron-builder --win",
+    "build:win:portable": "npm run generate-previews && node clean-release.js && node copy-media.js && vite build && node build-electron.js && electron-builder --config electron-builder-portable.json --win",
+    "build:win:dir": "npm run generate-previews && vite build && node build-electron.js && electron-builder --win dir",
+    "build:mac": "npm run generate-previews && vite build && node build-electron.js && electron-builder --mac",
+    "build:linux": "npm run generate-previews && vite build && node build-electron.js && electron-builder --linux",
     "preview": "vite preview",
     "electron:dev": "vite build && node build-electron.js && electron .",
     "electron:pack": "electron-builder",
     "postinstall": "electron-builder install-app-deps"
   },
   "dependencies": {
+    "@google/genai": "^1.20.0",
+    "monaco-editor": "^0.54.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
-    "@google/genai": "^1.20.0",
-    "three": "^0.180.0",
-    "monaco-editor": "^0.54.0"
+    "three": "^0.180.0"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
     "@vitejs/plugin-react": "^5.0.0",
-    "typescript": "~5.8.2",
-    "vite": "^6.2.0",
     "electron": "^32.0.0",
     "electron-builder": "^25.1.8",
-    "esbuild": "^0.24.0"
+    "esbuild": "^0.24.0",
+    "gl": "^6.0.1",
+    "sharp": "^0.33.5",
+    "tsx": "^4.20.6",
+    "typescript": "~5.8.2",
+    "vite": "^6.2.0"
   },
   "build": {
     "appId": "com.haluzator.app",
@@ -44,6 +48,7 @@
       "dist-electron/**/*",
       "media/**/*",
       "assets/**/*",
+      "public/assets/shaders-previews/**/*",
       "package.json"
     ],
     "win": {

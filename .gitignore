@@ -12,6 +12,7 @@ dist
 dist-ssr
 dist-electron
 release
+public/assets/shaders-previews
 *.local
 
 # Editor directories and files
