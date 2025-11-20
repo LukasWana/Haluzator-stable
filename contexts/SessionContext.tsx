@@ -271,11 +271,13 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
         const { preGeneratedPreviews, remainingKeys } = await checkPreGeneratedPreviews(Object.keys(SHADERS));
         Object.assign(previewsToSet, preGeneratedPreviews);
 
-        // For remaining shaders, check cache or generate
+        // For remaining shaders, use cache if available (even if version doesn't match), only generate if no cache exists
         remainingKeys.forEach(key => {
-            if (isDefaultCacheValid && typeof cachedPreviews[key] === 'string') {
+            if (typeof cachedPreviews[key] === 'string') {
+                // Use cache even if version doesn't match - it's better than generating
                 previewsToSet[key] = cachedPreviews[key];
             } else {
+                // Only generate if we don't have PNG and don't have cache
                 shadersToGenerate[key] = SHADERS[key as keyof typeof SHADERS];
             }
         });
