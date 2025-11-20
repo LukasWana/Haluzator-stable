@@ -82,20 +82,11 @@ header {
   height: 22px;
 }
 
-.panel-toggles {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    margin-left: 1rem;
-}
-
 .status-indicators {
     display: flex;
     align-items: center;
     border-left: 1px solid var(--border-color);
     margin-left: 1rem;
-    gap: 1rem;
-    padding-left: 1rem;
 }
 
 .fps-display {

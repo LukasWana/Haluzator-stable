@@ -13,7 +13,7 @@ export const Sequencer = React.memo(function Sequencer() {
     } = useSequencer();
     
     const { isPlaying, currentStep, liveVjStep } = usePlayback();
-    const { userImages, userVideos, userModels, userHtml, modelPreviews, shaderPreviews } = useLibrary();
+    const { userImages, userVideos, userModels, modelPreviews, shaderPreviews } = useLibrary();
 
     const shaderSequence = shaderSequences[currentPage].slice(0, sequencerSteps);
     const mediaSequence = mediaSequences[currentPage].slice(0, sequencerSteps);
@@ -89,7 +89,6 @@ export const Sequencer = React.memo(function Sequencer() {
                 <div className="steps-container" ref={mediaStepsRef}>
                     {mediaSequence.map((item, index) => {
                         const isModel = !!(item?.key && userModels[item.key]);
-                        const isHtml = !!(item?.key && userHtml[item.key]);
                         return (
                             <SequencerStep
                                 key={`media-${index}`}
@@ -99,8 +98,6 @@ export const Sequencer = React.memo(function Sequencer() {
                                 videoInfo={item?.key ? userVideos[item.key] : null}
                                 imageSrc={item?.key ? (userImages[item.key] || modelPreviews[item.key]) : null}
                                 isModel={isModel}
-                                isHtml={isHtml}
-                                htmlContent={isHtml && item?.key ? userHtml[item.key] : null}
                                 isActive={isPlaying && currentStep === index}
                                 isEditable={editableStep === index}
                                 isLive={liveVjStep === index}

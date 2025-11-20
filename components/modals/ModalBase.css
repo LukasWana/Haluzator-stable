@@ -23,12 +23,10 @@
   gap: 1rem;
   max-height: 90vh;
   overflow-y: auto;
-  position: relative;
 }
 
 .modal-content h2 {
   margin: 0;
-  padding-right: 3rem; /* Make space for close button */
 }
 
 .modal-error {
@@ -103,23 +101,4 @@
 }
 .modal-button-danger:hover {
     background-color: #ff8c8c;
-}
-
-.modal-close-button {
-  position: absolute;
-  top: 0.75rem;
-  right: 0.75rem;
-  font-size: 2rem;
-  line-height: 1;
-  background: none;
-  border: none;
-  color: var(--secondary-color);
-  cursor: pointer;
-  padding: 0.5rem;
-  transition: color 0.2s ease;
-  z-index: 10;
-}
-
-.modal-close-button:hover {
-  color: var(--primary-color);
 }

@@ -94,7 +94,7 @@
     background-position: center;
 }
 
-.sequencer-step .shader-name {
+.sequencer-step.shader-step .shader-name {
   position: absolute;
   bottom: 0;
   left: 0;
@@ -151,47 +151,4 @@
     height: 100%;
     object-fit: cover;
     z-index: 0;
-}
-
-.step-settings-button {
-    position: absolute;
-    top: 2px;
-    left: 2px;
-    background-color: rgba(10, 10, 10, 0.7);
-    color: var(--secondary-color);
-    border: none;
-    border-radius: 50%;
-    width: 20px;
-    height: 20px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0;
-    opacity: 0;
-    transition: all 0.2s ease;
-    line-height: 1;
-    z-index: 10;
-}
-.sequencer-step:hover .step-settings-button {
-    opacity: 1;
-}
-.step-settings-button:hover {
-    background-color: var(--active-color);
-    color: white;
-    transform: rotate(45deg);
-}
-
-.step-settings-button.html-settings-button.edit {
-    left: auto;
-    right: 2px;
-}
-.step-settings-button.html-settings-button.anim {
-    left: 2px;
-}
-
-.step-settings-button.html-settings-button.edit:hover {
-    transform: none;
-}
-.step-settings-button.html-settings-button.anim:hover {
-    transform: rotate(45deg);
 }

@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef, createContext, useContext } from 'react';
 import { useUI } from './UIContext';
 import { useLibrary } from './LibraryContext';
-import { createInitialShaderSequences, createInitialMediaSequences, createDefaultPageControls } from '../utils/statePersistence';
-import { APP_STATE_STORAGE_KEY, STATE_VERSION, NUM_PAGES, DEFAULT_SEQUENCER_STEPS, SEQUENCER_STEP_OPTIONS, TRANSITION_DURATION_MS, defaultModelSettings, defaultHtmlSettings } from '../constants';
+import { loadState, createInitialShaderSequences, createInitialMediaSequences, createDefaultPageControls } from '../utils/statePersistence';
+import { APP_STATE_STORAGE_KEY, STATE_VERSION, NUM_PAGES, DEFAULT_SEQUENCER_STEPS, SEQUENCER_STEP_OPTIONS, TRANSITION_DURATION_MS } from '../constants';
 import { BLACK_SHADER_KEY } from '../gl/shaders';
 import { SHADERS as SHADERS_CATEGORIZED } from '../shaders/index';
-import type { ControlSettings, MediaSequenceItem, UserVideo, ModelSettings, HtmlSettings } from '../types';
+import type { ControlSettings, MediaSequenceItem, UserVideo } from '../types';
 
 // --- CONTEXT DEFINITIONS AND HOOKS (Moved from separate files) ---
 
@@ -31,8 +31,6 @@ export interface SequencerContextValue {
     setLoopEnd: React.Dispatch<React.SetStateAction<number>>;
     setCurrentPage: React.Dispatch<React.SetStateAction<number>>;
     handleControlChange: (field: keyof ControlSettings, value: number | boolean | string) => void;
-    handleStepModelSettingsChange: (stepIndex: number, field: keyof ModelSettings, value: number | boolean | string) => void;
-    handleStepHtmlSettingsChange: (stepIndex: number, field: keyof HtmlSettings, value: number | boolean | string) => void;
     handlePageChange: (newPageIndex: number) => void;
     handleSequencerStepsChange: (newSteps: number) => void;
     handleStepClick: (index: number, type: 'media' | 'shader', event: React.MouseEvent) => void;
@@ -44,7 +42,6 @@ export interface SequencerContextValue {
     endLoopSelection: () => void;
     addMediaToSequencer: (keys: string[]) => void;
     setActiveShaderKey: React.Dispatch<React.SetStateAction<string>>;
-    renameSequencerItem: (oldKey: string, newKey: string) => void;
 }
 export const SequencerContext = createContext<SequencerContextValue | undefined>(undefined);
 export const useSequencer = () => {
@@ -63,17 +60,13 @@ export interface PlaybackContextValue {
         toShaderKey: string;
         fromMediaKey: string | null;
         toMediaKey: string | null;
-        fromModelSettings: ModelSettings | null;
-        toModelSettings: ModelSettings | null;
-        fromHtmlSettings: HtmlSettings | null;
-        toHtmlSettings: HtmlSettings | null;
         isTransitioning: boolean;
         transitionProgress: number;
     };
     togglePlay: () => void;
     advanceSequence: () => void;
     triggerLiveVjStep: (stepIndex: number) => void;
-    startTransition: (from: { shaderKey: string | null; mediaKey: string | null; modelSettings: ModelSettings | null; htmlSettings: HtmlSettings | null; }, to: { shaderKey: string | null; mediaKey: string | null; modelSettings: ModelSettings | null; htmlSettings: HtmlSettings | null; }) => void;
+    startTransition: (from: { shaderKey: string | null; mediaKey: string | null; }, to: { shaderKey: string | null; mediaKey: string | null; }) => void;
 }
 export const PlaybackContext = createContext<PlaybackContextValue | undefined>(undefined);
 export const usePlayback = () => {
@@ -87,21 +80,22 @@ export const usePlayback = () => {
 export const SequencerAndPlaybackProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     // --- CONTEXT HOOKS ---
     const { setSelectedItem, selectedItem, isSessionLoading } = useUI();
-    const { userShaders, userImages, userVideos, userModels, userHtml, defaultShaderKeys } = useLibrary();
+    const { userShaders, userImages, userVideos, userModels, defaultShaderKeys } = useLibrary();
 
     // --- SEQUENCER STATE ---
-    const [shaderSequences, setShaderSequences] = useState<(string|null)[][]>(createInitialShaderSequences());
-    const [mediaSequences, setMediaSequences] = useState<MediaSequenceItem[][]>(createInitialMediaSequences());
-    const [currentPage, setCurrentPage] = useState(0);
-    const [pageControls, setPageControls] = useState<ControlSettings[]>(createDefaultPageControls());
-    const [sequencerSteps, setSequencerSteps] = useState(DEFAULT_SEQUENCER_STEPS);
-    const [isLoopingEnabled, setIsLoopingEnabled] = useState(false);
-    const [loopStart, setLoopStart] = useState(0);
-    const [loopEnd, setLoopEnd] = useState(DEFAULT_SEQUENCER_STEPS - 1);
+    const loadedState = loadState();
+    const [shaderSequences, setShaderSequences] = useState<(string|null)[][]>(loadedState?.shaderSequences || createInitialShaderSequences());
+    const [mediaSequences, setMediaSequences] = useState<MediaSequenceItem[][]>(loadedState?.mediaSequences || createInitialMediaSequences());
+    const [currentPage, setCurrentPage] = useState(loadedState?.currentPage || 0);
+    const [pageControls, setPageControls] = useState<ControlSettings[]>(loadedState?.pageControls || createDefaultPageControls());
+    const [sequencerSteps, setSequencerSteps] = useState(loadedState?.sequencerSteps || DEFAULT_SEQUENCER_STEPS);
+    const [isLoopingEnabled, setIsLoopingEnabled] = useState(loadedState?.isLoopingEnabled ?? false);
+    const [loopStart, setLoopStart] = useState(loadedState?.loopStart ?? 0);
+    const [loopEnd, setLoopEnd] = useState(loadedState?.loopEnd ?? (loadedState?.sequencerSteps ?? DEFAULT_SEQUENCER_STEPS) - 1);
     const [editableStep, setEditableStep] = useState(0);
     const [activeShaderKey, setActiveShaderKey] = useState(BLACK_SHADER_KEY);
     const [isSelectingLoop, setIsSelectingLoop] = useState(false);
-    
+
     // --- PLAYBACK STATE ---
     const [isPlaying, setIsPlaying] = useState(false);
     const [currentStep, setCurrentStep] = useState(0);
@@ -109,10 +103,6 @@ export const SequencerAndPlaybackProvider: React.FC<{ children: React.ReactNode 
     const [transitionState, setTransitionState] = useState({
         fromShaderKey: BLACK_SHADER_KEY, toShaderKey: BLACK_SHADER_KEY,
         fromMediaKey: null as string | null, toMediaKey: null as string | null,
-        fromModelSettings: null as ModelSettings | null,
-        toModelSettings: null as ModelSettings | null,
-        fromHtmlSettings: null as HtmlSettings | null,
-        toHtmlSettings: null as HtmlSettings | null,
         isTransitioning: false, transitionProgress: 0,
     });
 
@@ -128,20 +118,18 @@ export const SequencerAndPlaybackProvider: React.FC<{ children: React.ReactNode 
 
 
     // --- TRANSITION LOGIC ---
-    const startTransition = useCallback((from: { shaderKey: string | null; mediaKey: string | null; modelSettings: ModelSettings | null; htmlSettings: HtmlSettings | null }, to: { shaderKey: string | null; mediaKey: string | null; modelSettings: ModelSettings | null; htmlSettings: HtmlSettings | null }) => {
+    const startTransition = useCallback((from: { shaderKey: string | null; mediaKey: string | null; }, to: { shaderKey: string | null; mediaKey: string | null; }) => {
         if (transitionRafRef.current) cancelAnimationFrame(transitionRafRef.current);
         const fromShaderKey = from.shaderKey || BLACK_SHADER_KEY;
         const toShaderKey = to.shaderKey || BLACK_SHADER_KEY;
 
-        const settingsAreEqual = JSON.stringify(from.modelSettings) === JSON.stringify(to.modelSettings) && JSON.stringify(from.htmlSettings) === JSON.stringify(to.htmlSettings);
-
-        if (fromShaderKey === toShaderKey && from.mediaKey === to.mediaKey && settingsAreEqual) {
-           setTransitionState(prev => ({ ...prev, isTransitioning: false, fromShaderKey: toShaderKey, toShaderKey: toShaderKey, fromMediaKey: to.mediaKey, toMediaKey: to.mediaKey, fromModelSettings: to.modelSettings, toModelSettings: to.modelSettings, fromHtmlSettings: to.htmlSettings, toHtmlSettings: to.htmlSettings }));
+        if (fromShaderKey === toShaderKey && from.mediaKey === to.mediaKey) {
+           setTransitionState(prev => ({ ...prev, isTransitioning: false, fromShaderKey: toShaderKey, toShaderKey: toShaderKey, fromMediaKey: to.mediaKey, toMediaKey: to.mediaKey }));
            setActiveShaderKey(toShaderKey);
            return;
         }
 
-        setTransitionState({ fromShaderKey, toShaderKey, fromMediaKey: from.mediaKey, toMediaKey: to.mediaKey, fromModelSettings: from.modelSettings, toModelSettings: to.modelSettings, fromHtmlSettings: from.htmlSettings, toHtmlSettings: to.htmlSettings, isTransitioning: true, transitionProgress: 0 });
+        setTransitionState({ fromShaderKey, toShaderKey, fromMediaKey: from.mediaKey, toMediaKey: to.mediaKey, isTransitioning: true, transitionProgress: 0 });
         let startTime: number | null = null;
         const animate = (timestamp: number) => {
             if (!startTime) startTime = timestamp;
@@ -151,7 +139,7 @@ export const SequencerAndPlaybackProvider: React.FC<{ children: React.ReactNode 
             if (progress < 1.0) {
                 transitionRafRef.current = requestAnimationFrame(animate);
             } else {
-                setTransitionState({ isTransitioning: false, fromShaderKey: toShaderKey, toShaderKey: toShaderKey, fromMediaKey: to.mediaKey, toMediaKey: to.mediaKey, fromModelSettings: to.modelSettings, toModelSettings: to.modelSettings, fromHtmlSettings: to.htmlSettings, toHtmlSettings: to.htmlSettings, transitionProgress: 0 });
+                setTransitionState({ isTransitioning: false, fromShaderKey: toShaderKey, toShaderKey: toShaderKey, fromMediaKey: to.mediaKey, toMediaKey: to.mediaKey, transitionProgress: 0 });
                 setActiveShaderKey(toShaderKey);
                 transitionRafRef.current = null;
             }
@@ -174,16 +162,8 @@ export const SequencerAndPlaybackProvider: React.FC<{ children: React.ReactNode 
                 }
             }
             if (nextStep !== -1) {
-                const from = { shaderKey: transitionStateRef.current.toShaderKey, mediaKey: transitionStateRef.current.toMediaKey, modelSettings: transitionStateRef.current.toModelSettings, htmlSettings: transitionStateRef.current.toHtmlSettings };
-                const nextMediaItem = mediaSequences[currentPage][nextStep];
-                const isModel = !!(nextMediaItem?.key && userModels[nextMediaItem.key]);
-                const isHtml = !!(nextMediaItem?.key && userHtml[nextMediaItem.key]);
-                const to = { 
-                    shaderKey: shaderSequences[currentPage][nextStep] || BLACK_SHADER_KEY, 
-                    mediaKey: nextMediaItem?.key || null, 
-                    modelSettings: isModel ? (nextMediaItem.modelSettings || defaultModelSettings) : null,
-                    htmlSettings: isHtml ? (nextMediaItem.htmlSettings || defaultHtmlSettings) : null
-                };
+                const from = { shaderKey: transitionStateRef.current.toShaderKey, mediaKey: transitionStateRef.current.toMediaKey };
+                const to = { shaderKey: shaderSequences[currentPage][nextStep] || BLACK_SHADER_KEY, mediaKey: mediaSequences[currentPage][nextStep]?.key || null };
                 startTransition(from, to);
                 setCurrentStep(nextStep);
             } else {
@@ -198,16 +178,8 @@ export const SequencerAndPlaybackProvider: React.FC<{ children: React.ReactNode 
         do {
             if (searchStep >= sequencerSteps) { searchStep = 0; searchPage = (searchPage + 1) % NUM_PAGES; }
             if (shaderSequences[searchPage][searchStep] || mediaSequences[searchPage][searchStep]?.key) {
-                const from = { shaderKey: transitionStateRef.current.toShaderKey, mediaKey: transitionStateRef.current.toMediaKey, modelSettings: transitionStateRef.current.toModelSettings, htmlSettings: transitionStateRef.current.toHtmlSettings };
-                const nextMediaItem = mediaSequences[searchPage][searchStep];
-                const isModel = !!(nextMediaItem?.key && userModels[nextMediaItem.key]);
-                const isHtml = !!(nextMediaItem?.key && userHtml[nextMediaItem.key]);
-                const to = { 
-                    shaderKey: shaderSequences[searchPage][searchStep] || BLACK_SHADER_KEY, 
-                    mediaKey: nextMediaItem?.key || null,
-                    modelSettings: isModel ? (nextMediaItem.modelSettings || defaultModelSettings) : null,
-                    htmlSettings: isHtml ? (nextMediaItem.htmlSettings || defaultHtmlSettings) : null
-                };
+                const from = { shaderKey: transitionStateRef.current.toShaderKey, mediaKey: transitionStateRef.current.toMediaKey };
+                const to = { shaderKey: shaderSequences[searchPage][searchStep] || BLACK_SHADER_KEY, mediaKey: mediaSequences[searchPage][searchStep]?.key || null };
                 startTransition(from, to);
                 if (currentPage !== searchPage) setCurrentPage(searchPage);
                 setCurrentStep(searchStep);
@@ -216,7 +188,7 @@ export const SequencerAndPlaybackProvider: React.FC<{ children: React.ReactNode 
             searchStep++;
         } while (searchPage !== startSearchPage || searchStep !== startSearchStep);
         setIsPlaying(false);
-    }, [isPlaying, isLoopingEnabled, currentStep, loopEnd, loopStart, shaderSequences, currentPage, mediaSequences, sequencerSteps, startTransition, setCurrentPage, userModels, userHtml]);
+    }, [isPlaying, isLoopingEnabled, currentStep, loopEnd, loopStart, shaderSequences, currentPage, mediaSequences, sequencerSteps, startTransition, setCurrentPage]);
 
     const togglePlay = useCallback(() => {
         setIsPlaying(prevIsPlaying => {
@@ -224,7 +196,7 @@ export const SequencerAndPlaybackProvider: React.FC<{ children: React.ReactNode 
                 let firstStepFound = false;
                 let startSearchPage = currentPage;
                 let startSearchStep = editableStep;
-                
+
                 if (isLoopingEnabled) {
                     startSearchPage = currentPage;
                     if (editableStep >= loopStart && editableStep <= loopEnd) {
@@ -239,16 +211,8 @@ export const SequencerAndPlaybackProvider: React.FC<{ children: React.ReactNode 
 
                 do {
                     if (shaderSequences[searchPage][searchStep] || mediaSequences[searchPage][searchStep]?.key) {
-                        const from = { shaderKey: transitionStateRef.current.toShaderKey, mediaKey: transitionStateRef.current.toMediaKey, modelSettings: transitionStateRef.current.toModelSettings, htmlSettings: transitionStateRef.current.toHtmlSettings };
-                        const mediaItem = mediaSequences[searchPage][searchStep];
-                        const isModel = !!(mediaItem?.key && userModels[mediaItem.key]);
-                        const isHtml = !!(mediaItem?.key && userHtml[mediaItem.key]);
-                        const to = { 
-                            shaderKey: shaderSequences[searchPage][searchStep] || BLACK_SHADER_KEY, 
-                            mediaKey: mediaItem?.key || null, 
-                            modelSettings: isModel ? (mediaItem.modelSettings || defaultModelSettings) : null,
-                            htmlSettings: isHtml ? (mediaItem.htmlSettings || defaultHtmlSettings) : null
-                        };
+                        const from = { shaderKey: transitionStateRef.current.toShaderKey, mediaKey: transitionStateRef.current.toMediaKey };
+                        const to = { shaderKey: shaderSequences[searchPage][searchStep] || BLACK_SHADER_KEY, mediaKey: mediaSequences[searchPage][searchStep]?.key || null };
                         startTransition(from, to);
                         if (currentPage !== searchPage) setCurrentPage(searchPage);
                         setCurrentStep(searchStep);
@@ -265,48 +229,32 @@ export const SequencerAndPlaybackProvider: React.FC<{ children: React.ReactNode 
                         }
                     }
                 } while(searchPage !== startSearchPage || searchStep !== startSearchStep);
-                
+
                 return firstStepFound;
             }
             return false;
         });
-    }, [startTransition, currentPage, editableStep, shaderSequences, mediaSequences, sequencerSteps, isLoopingEnabled, loopStart, loopEnd, setCurrentPage, userModels, userHtml]);
+    }, [startTransition, currentPage, editableStep, shaderSequences, mediaSequences, sequencerSteps, isLoopingEnabled, loopStart, loopEnd, setCurrentPage]);
 
     const triggerLiveVjStep = useCallback((stepIndex: number) => {
         if (stepIndex >= sequencerSteps) return;
         if (liveVjTimeoutRef.current) clearTimeout(liveVjTimeoutRef.current);
         setLiveVjStep(stepIndex);
-        const from = { shaderKey: transitionStateRef.current.toShaderKey, mediaKey: transitionStateRef.current.toMediaKey, modelSettings: transitionStateRef.current.toModelSettings, htmlSettings: transitionStateRef.current.toHtmlSettings };
-        const mediaItem = mediaSequences[currentPage][stepIndex];
-        const isModel = !!(mediaItem?.key && userModels[mediaItem.key]);
-        const isHtml = !!(mediaItem?.key && userHtml[mediaItem.key]);
-        const to = { 
-            shaderKey: shaderSequences[currentPage][stepIndex] || BLACK_SHADER_KEY, 
-            mediaKey: mediaItem?.key || null, 
-            modelSettings: isModel ? (mediaItem.modelSettings || defaultModelSettings) : null,
-            htmlSettings: isHtml ? (mediaItem.htmlSettings || defaultHtmlSettings) : null
-        };
+        const from = { shaderKey: transitionStateRef.current.toShaderKey, mediaKey: transitionStateRef.current.toMediaKey };
+        const to = { shaderKey: shaderSequences[currentPage][stepIndex] || BLACK_SHADER_KEY, mediaKey: mediaSequences[currentPage][stepIndex]?.key || null };
         startTransition(from, to);
         if (isPlaying) {
-            setCurrentStep(stepIndex); 
+            setCurrentStep(stepIndex);
             liveVjTimeoutRef.current = window.setTimeout(() => setLiveVjStep(null), 50);
         } else {
             const stepDuration = 60 / pageControls[currentPage].stepsPerMinute;
             liveVjTimeoutRef.current = window.setTimeout(() => {
                 setLiveVjStep(null);
-                const backToMediaItem = mediaSequences[currentPage][editableStep];
-                const isBackToModel = !!(backToMediaItem?.key && userModels[backToMediaItem.key]);
-                const isBackToHtml = !!(backToMediaItem?.key && userHtml[backToMediaItem.key]);
-                const backTo = { 
-                    shaderKey: shaderSequences[currentPage][editableStep] || BLACK_SHADER_KEY, 
-                    mediaKey: backToMediaItem?.key || null, 
-                    modelSettings: isBackToModel ? (backToMediaItem.modelSettings || defaultModelSettings) : null,
-                    htmlSettings: isBackToHtml ? (backToMediaItem.htmlSettings || defaultHtmlSettings) : null
-                };
+                const backTo = { shaderKey: shaderSequences[currentPage][editableStep] || BLACK_SHADER_KEY, mediaKey: mediaSequences[currentPage][editableStep]?.key || null };
                 startTransition(to, backTo);
             }, stepDuration * 1000);
         }
-    }, [startTransition, sequencerSteps, shaderSequences, currentPage, mediaSequences, isPlaying, pageControls, editableStep, userModels, userHtml]);
+    }, [startTransition, sequencerSteps, shaderSequences, currentPage, mediaSequences, isPlaying, pageControls, editableStep]);
 
     // --- SEQUENCER LOGIC ---
     const handleStepClick = useCallback((index: number, type: 'media' | 'shader', event: React.MouseEvent) => {
@@ -315,45 +263,39 @@ export const SequencerAndPlaybackProvider: React.FC<{ children: React.ReactNode 
         setEditableStep(index);
         if (!selectedItem) return;
 
-        const isSelectedMedia = !!(userImages[selectedItem] || userVideos[selectedItem] || userModels[selectedItem] || userHtml[selectedItem]);
-        
-        // Shader assignment logic
-        if (type === 'shader' && !isSelectedMedia) {
-            setShaderSequences(prev => {
-                const newSequences = JSON.parse(JSON.stringify(prev));
+        const isSelectedMedia = !!(userImages[selectedItem] || userVideos[selectedItem] || userModels[selectedItem]);
+
+        const performUpdate = (sequences: any, updateFunc: (seq: any) => void) => {
+            const newSequences = JSON.parse(JSON.stringify(sequences));
+            updateFunc(newSequences);
+            return newSequences;
+        };
+
+        const performTransition = (nextShaderKey: string | null, nextMediaKey: string | null) => {
+            if (!isPlaying) {
+                const to = { shaderKey: nextShaderKey || BLACK_SHADER_KEY, mediaKey: nextMediaKey };
+                startTransition({ shaderKey: transitionStateRef.current.toShaderKey, mediaKey: transitionStateRef.current.toMediaKey }, to);
+            }
+        };
+
+        if (type === 'media' && isSelectedMedia) {
+            setMediaSequences(prev => performUpdate(prev, newSequences => {
+                const newKey = newSequences[currentPage][index]?.key === selectedItem ? null : selectedItem;
+                newSequences[currentPage][index] = { key: newKey };
+                // When a step is clicked, the preview should update to that step's content,
+                // so we pass the step's shader key along with the new media key.
+                performTransition(shaderSequences[currentPage][index], newKey);
+            }));
+        } else if (type === 'shader' && !isSelectedMedia) {
+            setShaderSequences(prev => performUpdate(prev, newSequences => {
                 const newShader = newSequences[currentPage][index] === selectedItem ? null : selectedItem;
                 newSequences[currentPage][index] = newShader;
-                return newSequences;
-            });
-            return;
+                // When a step is clicked, the preview should update to that step's content,
+                // so we pass the step's media key along with the new shader key.
+                performTransition(newShader, mediaSequences[currentPage][index]?.key);
+            }));
         }
-
-        // Media assignment logic
-        if (type === 'media' && isSelectedMedia) {
-            const currentKeyInStep = mediaSequences[currentPage]?.[index]?.key;
-
-            // If clicking the same item to clear the step
-            if (currentKeyInStep === selectedItem) {
-                setMediaSequences(prev => {
-                    const newSequences = JSON.parse(JSON.stringify(prev));
-                    newSequences[currentPage][index] = { key: null };
-                    return newSequences;
-                });
-                return;
-            }
-
-            // Simplified assignment for all media types
-            setMediaSequences(prev => {
-                const newSequences = JSON.parse(JSON.stringify(prev));
-                newSequences[currentPage][index] = { ...newSequences[currentPage][index], key: selectedItem };
-                return newSequences;
-            });
-        }
-    }, [
-        selectedItem, currentPage, loopStart, loopEnd, setLoopStart, setLoopEnd,
-        userImages, userVideos, userModels, userHtml,
-        mediaSequences, setEditableStep, setShaderSequences, setMediaSequences
-    ]);
+    }, [startTransition, selectedItem, isPlaying, currentPage, shaderSequences, mediaSequences, userImages, userVideos, userModels, loopStart, loopEnd]);
 
     const handleControlChange = useCallback((field: keyof ControlSettings, value: number | boolean | string) => {
         setPageControls(p => {
@@ -363,40 +305,10 @@ export const SequencerAndPlaybackProvider: React.FC<{ children: React.ReactNode 
             return newControls;
         });
     }, [currentPage]);
-    
-    const handleStepModelSettingsChange = useCallback((stepIndex: number, field: keyof ModelSettings, value: number | boolean | string) => {
-        setMediaSequences(prev => {
-            const newSequences = JSON.parse(JSON.stringify(prev));
-            const step = newSequences[currentPage][stepIndex];
-            if (step) {
-                if (!step.modelSettings) {
-                    // Initialize from defaults if it doesn't exist
-                    step.modelSettings = { ...defaultModelSettings };
-                }
-                // @ts-ignore
-                step.modelSettings[field] = value;
-            }
-            return newSequences;
-        });
-    }, [currentPage]);
-
-    const handleStepHtmlSettingsChange = useCallback((stepIndex: number, field: keyof HtmlSettings, value: string | number | boolean) => {
-        setMediaSequences(prev => {
-            const newSequences = JSON.parse(JSON.stringify(prev));
-            const step = newSequences[currentPage][stepIndex];
-            if (step) {
-                if (!step.htmlSettings) {
-                    step.htmlSettings = { ...defaultHtmlSettings };
-                }
-                // @ts-ignore
-                step.htmlSettings[field] = value;
-            }
-            return newSequences;
-        });
-    }, [currentPage]);
 
     const handlePageChange = useCallback((newPageIndex: number) => {
         setCurrentPage(newPageIndex);
+        // This is now handled by the main preview useEffect
     }, []);
 
     const handleSequencerStepsChange = useCallback((newSteps: number) => {
@@ -406,21 +318,21 @@ export const SequencerAndPlaybackProvider: React.FC<{ children: React.ReactNode 
         setLoopEnd(newSteps - 1);
         setEditableStep(prev => Math.min(prev, newSteps - 1));
     }, []);
-    
+
     const startLoopSelection = useCallback((index: number) => {
         setIsSelectingLoop(true);
         loopSelectionStartRef.current = index;
         setLoopStart(index);
         setLoopEnd(index);
     }, []);
-    
+
     const updateLoopSelection = useCallback((index: number) => {
         if (!isSelectingLoop || loopSelectionStartRef.current === null) return;
         const start = loopSelectionStartRef.current;
         setLoopStart(Math.min(start, index));
         setLoopEnd(Math.max(start, index));
     }, [isSelectingLoop]);
-    
+
     const endLoopSelection = useCallback(() => {
         if (isSelectingLoop) setIsSelectingLoop(false);
     }, [isSelectingLoop]);
@@ -442,51 +354,23 @@ export const SequencerAndPlaybackProvider: React.FC<{ children: React.ReactNode 
         setCurrentPage(pageIdx);
         setEditableStep(stepIdx);
     }, [currentPage, editableStep, sequencerSteps, mediaSequences]);
-    
-    const renameSequencerItem = useCallback((oldKey: string, newKey: string) => {
-        const rename = (sequences: any[][]) => sequences.map(page =>
-            page.map(item => {
-                if (typeof item === 'string' && item === oldKey) {
-                    return newKey;
-                }
-                if (typeof item === 'object' && item?.key === oldKey) {
-                    return { ...item, key: newKey };
-                }
-                return item;
-            })
-        );
-        setShaderSequences(rename);
-        setMediaSequences(rename as (prev: MediaSequenceItem[][]) => MediaSequenceItem[][]);
-    
-        setTransitionState(prev => {
-            let needsUpdate = false;
-            const newState = { ...prev };
-            if (newState.fromShaderKey === oldKey) { newState.fromShaderKey = newKey; needsUpdate = true; }
-            if (newState.toShaderKey === oldKey) { newState.toShaderKey = newKey; needsUpdate = true; }
-            if (newState.fromMediaKey === oldKey) { newState.fromMediaKey = newKey; needsUpdate = true; }
-            if (newState.toMediaKey === oldKey) { newState.toMediaKey = newKey; needsUpdate = true; }
-            return needsUpdate ? newState : prev;
-        });
-    
-        setActiveShaderKey(prev => prev === oldKey ? newKey : prev);
-    }, []);
-    
-    // --- EFFECTS ---
-    const advanceSequenceRef = useRef(advanceSequence);
-    useEffect(() => {
-        advanceSequenceRef.current = advanceSequence;
-    }, [advanceSequence]);
 
+    // --- EFFECTS ---
     // Effect for handling video playback in preview (edit) mode
     useEffect(() => {
         if (isPlaying) return;
 
         const stepMediaKey = mediaSequences[currentPage]?.[editableStep]?.key || null;
-        
+        // The logic here is different from the main preview. We DO want to preview a selected video.
+        // The main preview logic will decide what to render, this just handles playback.
+        const isSelectedItemMedia = !!(userImages[selectedItem] || userVideos[selectedItem] || userModels[selectedItem]);
+        const previewMediaKey = isSelectedItemMedia ? selectedItem : stepMediaKey;
+
+
         Object.entries(userVideos).forEach(([key, videoInfo]: [string, UserVideo]) => {
             if (!videoInfo.element) return;
-            
-            if (key === stepMediaKey) {
+
+            if (key === previewMediaKey) {
                 if (videoInfo.element.paused) {
                     videoInfo.element.currentTime = 0;
                     videoInfo.element.loop = true;
@@ -505,8 +389,8 @@ export const SequencerAndPlaybackProvider: React.FC<{ children: React.ReactNode 
                 }
             }
         });
-        
-    }, [isPlaying, currentPage, editableStep, mediaSequences, userVideos]);
+
+    }, [isPlaying, currentPage, editableStep, mediaSequences, userVideos, selectedItem, userImages, userModels]);
 
     // Effect for handling sequencer playback (timers and video control)
     useEffect(() => {
@@ -519,28 +403,41 @@ export const SequencerAndPlaybackProvider: React.FC<{ children: React.ReactNode 
             return;
         }
 
-        let timerId: number | null = null;
-    
-        const advance = () => advanceSequenceRef.current();
-
         const currentMediaKey = mediaSequences[currentPage]?.[currentStep]?.key;
+
+        Object.entries(userVideos).forEach(([key, videoInfo]: [string, UserVideo]) => {
+            if (key !== currentMediaKey && videoInfo.element && !videoInfo.element.paused) {
+                videoInfo.element.pause();
+            }
+        });
+
         const videoInfo = currentMediaKey ? userVideos[currentMediaKey] : null;
         const videoElement = videoInfo?.element;
+        let timerId: number | null = null;
 
         const handleVideoEnd = () => {
-            advance();
+            if (isPlaying) {
+                advanceSequence();
+            }
         };
 
-        if (videoElement) {
+        if (videoInfo && videoElement) {
             videoElement.loop = false;
             if (videoElement.paused) {
                 videoElement.currentTime = 0;
-                videoElement.play().catch(e => { if (e.name !== 'AbortError') console.error("Video play error:", e); });
+                const playPromise = videoElement.play();
+                if (playPromise !== undefined) {
+                    playPromise.catch(e => {
+                        if (e.name !== 'AbortError') {
+                            console.error("Error playing sequence video:", e);
+                        }
+                    });
+                }
             }
             videoElement.addEventListener('ended', handleVideoEnd, { once: true });
         } else {
             const duration = 60000 / pageControls[currentPage].stepsPerMinute;
-            timerId = window.setTimeout(advance, duration);
+            timerId = window.setTimeout(advanceSequence, duration);
         }
 
         return () => {
@@ -549,7 +446,7 @@ export const SequencerAndPlaybackProvider: React.FC<{ children: React.ReactNode 
                 videoElement.removeEventListener('ended', handleVideoEnd);
             }
         };
-    }, [isPlaying, isSessionLoading, currentStep, currentPage, pageControls, mediaSequences, userVideos]);
+    }, [isPlaying, currentStep, currentPage, pageControls, mediaSequences, userVideos, advanceSequence, isSessionLoading]);
 
 
     useEffect(() => {
@@ -568,41 +465,22 @@ export const SequencerAndPlaybackProvider: React.FC<{ children: React.ReactNode 
 
     // Main Preview Logic
     useEffect(() => {
-        if (isPlaying) return;
-        
-        const currentTransitionState = transitionStateRef.current;
-        
-        const stepShaderKey = shaderSequences[currentPage]?.[editableStep] || null;
-        const stepMediaItem = mediaSequences[currentPage]?.[editableStep];
-        const stepMediaKey = stepMediaItem?.key || null;
+        if (!isPlaying) {
+            const stepShaderKey = shaderSequences[currentPage]?.[editableStep] || null;
+            const stepMediaKey = mediaSequences[currentPage]?.[editableStep]?.key || null;
 
-        const isModel = !!(stepMediaKey && userModels[stepMediaKey]);
-        const isHtml = !!(stepMediaKey && userHtml[stepMediaKey]);
-        
-        const previewShaderKey = stepShaderKey || BLACK_SHADER_KEY;
-        const previewMediaKey = stepMediaKey;
-        const previewModelSettings = isModel ? (stepMediaItem?.modelSettings || defaultModelSettings) : null;
-        const previewHtmlSettings = isHtml ? (stepMediaItem?.htmlSettings || defaultHtmlSettings) : null;
+            // When not playing, the preview should always reflect the editable step,
+            // not the selected item in the library. The selected item is only for assigning.
+            const previewShaderKey = stepShaderKey || BLACK_SHADER_KEY;
+            const previewMediaKey = stepMediaKey;
 
-        const settingsAreEqual = JSON.stringify(previewModelSettings) === JSON.stringify(currentTransitionState.toModelSettings) && JSON.stringify(previewHtmlSettings) === JSON.stringify(currentTransitionState.toHtmlSettings);
-
-        if (previewShaderKey !== currentTransitionState.toShaderKey || previewMediaKey !== currentTransitionState.toMediaKey || !settingsAreEqual) {
-            const from = { 
-                shaderKey: currentTransitionState.toShaderKey, 
-                mediaKey: currentTransitionState.toMediaKey,
-                modelSettings: currentTransitionState.toModelSettings,
-                htmlSettings: currentTransitionState.toHtmlSettings
-            };
-            const to = { 
-                shaderKey: previewShaderKey, 
-                mediaKey: previewMediaKey, 
-                modelSettings: previewModelSettings,
-                htmlSettings: previewHtmlSettings
-            };
-            startTransition(from, to);
+            if (previewShaderKey !== transitionState.toShaderKey || previewMediaKey !== transitionState.toMediaKey) {
+                startTransition({ shaderKey: transitionState.toShaderKey, mediaKey: transitionState.toMediaKey }, { shaderKey: previewShaderKey, mediaKey: previewMediaKey });
+            }
         }
     }, [
-        isPlaying, currentPage, editableStep, shaderSequences, mediaSequences, userModels, userHtml, startTransition
+        isPlaying, currentPage, editableStep, shaderSequences, mediaSequences,
+        transitionState.toShaderKey, transitionState.toMediaKey, startTransition
     ]);
 
     // Effect to clean up sequences if an item is deleted from the library
@@ -610,7 +488,7 @@ export const SequencerAndPlaybackProvider: React.FC<{ children: React.ReactNode 
         if (isSessionLoading) return;
 
         const allValidShaderKeys = [...defaultShaderKeys, ...Object.keys(userShaders)];
-        const allValidMediaKeys = [...Object.keys(userImages), ...Object.keys(userVideos), ...Object.keys(userModels), ...Object.keys(userHtml)];
+        const allValidMediaKeys = [...Object.keys(userImages), ...Object.keys(userVideos), ...Object.keys(userModels)];
 
         setShaderSequences(prevSequences => {
             let changed = false;
@@ -639,7 +517,7 @@ export const SequencerAndPlaybackProvider: React.FC<{ children: React.ReactNode 
             );
             return changed ? newSequences : prevSequences;
         });
-    }, [userShaders, userImages, userVideos, userModels, userHtml, defaultShaderKeys, isSessionLoading, setShaderSequences, setMediaSequences]);
+    }, [userShaders, userImages, userVideos, userModels, defaultShaderKeys, isSessionLoading, setShaderSequences, setMediaSequences]);
 
     // --- CONTEXT VALUES ---
     const sequencerValue: SequencerContextValue = useMemo(() => ({
@@ -647,20 +525,19 @@ export const SequencerAndPlaybackProvider: React.FC<{ children: React.ReactNode 
         loopStart, loopEnd, editableStep, activeShaderKey, isSelectingLoop,
         setMediaSequences, setShaderSequences, setPageControls, setSequencerSteps,
         setIsLoopingEnabled, setLoopStart, setLoopEnd, setCurrentPage,
-        handleControlChange, handleStepModelSettingsChange, handleStepHtmlSettingsChange, handlePageChange, handleSequencerStepsChange, handleStepClick,
+        handleControlChange, handlePageChange, handleSequencerStepsChange, handleStepClick,
         toggleLoop: () => setIsLoopingEnabled(p => !p),
         shiftLoop: (dir: 'left' | 'right') => { const shift = dir === 'left' ? -1 : 1; if ((dir === 'left' && loopStart > 0) || (dir === 'right' && loopEnd < sequencerSteps - 1)) { setLoopStart(p => p + shift); setLoopEnd(p => p + shift); }},
         setEditableStep,
         startLoopSelection, updateLoopSelection, endLoopSelection,
         addMediaToSequencer,
         setActiveShaderKey,
-        renameSequencerItem,
     }), [
         shaderSequences, mediaSequences, currentPage, pageControls, sequencerSteps, isLoopingEnabled,
         loopStart, loopEnd, editableStep, activeShaderKey, isSelectingLoop,
-        handleControlChange, handleStepModelSettingsChange, handleStepHtmlSettingsChange, handlePageChange, handleSequencerStepsChange, handleStepClick,
+        handleControlChange, handlePageChange, handleSequencerStepsChange, handleStepClick,
         startLoopSelection, updateLoopSelection, endLoopSelection, addMediaToSequencer,
-        setActiveShaderKey, renameSequencerItem
+        setActiveShaderKey
     ]);
 
     const playbackValue: PlaybackContextValue = useMemo(() => ({

@@ -3,10 +3,6 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Shader Sequencer - Real-time visual effects sequencer with WebGL shaders, audio reactivity, and HTML overlays" />
-    <meta name="keywords" content="shader, sequencer, webgl, visual effects, audio reactive" />
-    <!-- CSP is relaxed for Electron - file:// protocol is needed for local resources -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' file:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://aistudiocdn.com file:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com file:; font-src 'self' https://fonts.gstatic.com data: file:; img-src 'self' data: blob: file:; connect-src 'self' https://fonts.googleapis.com file:; frame-src 'self' data: blob: file:;">
     <title>Shader Sequencer</title>
     <link rel="stylesheet" href="index.css" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -18,15 +14,14 @@
     "react": "https://aistudiocdn.com/react@^19.1.1",
     "react-dom/": "https://aistudiocdn.com/react-dom@^19.1.1/",
     "react/": "https://aistudiocdn.com/react@^19.1.1/",
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.20.0",
     "three": "https://aistudiocdn.com/three@^0.166.1/build/three.module.js",
     "three/addons/": "https://aistudiocdn.com/three@^0.166.1/examples/jsm/",
-    "three/": "https://aistudiocdn.com/three@^0.180.0/",
-    "monaco-editor": "https://aistudiocdn.com/monaco-editor@^0.54.0"
+    "three/": "https://aistudiocdn.com/three@^0.180.0/"
   }
 }
 </script>
     <script src="https://cdn.jsdelivr.net/npm/webmidi@latest/dist/iife/webmidi.iife.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.49.0/min/vs/loader.js"></script>
 <link rel="stylesheet" href="/index.css">
 </head>
   <body>
@@ -38,6 +33,7 @@
       </div>
     </div>
     <div id="root"></div>
-    <script type="module" src="/index.tsx"></script>
+    <script type="module" src="index.tsx"></script>
+  <script type="module" src="/index.tsx"></script>
 </body>
 </html>

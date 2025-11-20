@@ -1,5 +1,4 @@
 import React, { createContext, useContext } from 'react';
-import type { ModelSettings, HtmlSettings } from '../types';
 
 export interface PlaybackContextValue {
     isPlaying: boolean;
@@ -10,17 +9,13 @@ export interface PlaybackContextValue {
         toShaderKey: string;
         fromMediaKey: string | null;
         toMediaKey: string | null;
-        fromModelSettings: ModelSettings | null;
-        toModelSettings: ModelSettings | null;
-        fromHtmlSettings: HtmlSettings | null;
-        toHtmlSettings: HtmlSettings | null;
         isTransitioning: boolean;
         transitionProgress: number;
     };
     togglePlay: () => void;
     advanceSequence: () => void;
     triggerLiveVjStep: (stepIndex: number) => void;
-    startTransition: (from: { shaderKey: string | null; mediaKey: string | null; modelSettings: ModelSettings | null; htmlSettings: HtmlSettings | null; }, to: { shaderKey: string | null; mediaKey: string | null; modelSettings: ModelSettings | null; htmlSettings: HtmlSettings | null; }) => void;
+    startTransition: (from: { shaderKey: string | null; mediaKey: string | null; }, to: { shaderKey: string | null; mediaKey: string | null; }) => void;
 }
 
 export const PlaybackContext = createContext<PlaybackContextValue | undefined>(undefined);

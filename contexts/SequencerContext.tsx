@@ -1,5 +1,5 @@
 import React, { createContext, useContext } from 'react';
-import type { ControlSettings, MediaSequenceItem, ModelSettings, HtmlSettings } from '../types';
+import type { ControlSettings, MediaSequenceItem } from '../types';
 
 export interface SequencerContextValue {
     shaderSequences: (string | null)[][];
@@ -22,8 +22,6 @@ export interface SequencerContextValue {
     setLoopEnd: React.Dispatch<React.SetStateAction<number>>;
     setCurrentPage: React.Dispatch<React.SetStateAction<number>>;
     handleControlChange: (field: keyof ControlSettings, value: number | boolean | string) => void;
-    handleStepModelSettingsChange: (stepIndex: number, field: keyof ModelSettings, value: number | boolean | string) => void;
-    handleStepHtmlSettingsChange: (stepIndex: number, field: keyof HtmlSettings, value: number | boolean | string) => void;
     handlePageChange: (newPageIndex: number) => void;
     handleSequencerStepsChange: (newSteps: number) => void;
     handleStepClick: (index: number, type: 'media' | 'shader', event: React.MouseEvent) => void;
@@ -35,7 +33,6 @@ export interface SequencerContextValue {
     endLoopSelection: () => void;
     addMediaToSequencer: (keys: string[]) => void;
     setActiveShaderKey: React.Dispatch<React.SetStateAction<string>>;
-    renameSequencerItem: (oldKey: string, newKey: string) => void;
 }
 
 export const SequencerContext = createContext<SequencerContextValue | undefined>(undefined);

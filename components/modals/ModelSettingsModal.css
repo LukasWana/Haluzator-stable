@@ -1,38 +1,12 @@
 .model-settings-overlay {
-    /* Don't dim the background and allow mouse events to pass through to the canvas */
-    background-color: transparent;
-    backdrop-filter: none;
-    pointer-events: none;
     justify-content: flex-end;
     align-items: flex-start;
 }
 
 .model-settings-modal {
-    /* Re-enable mouse events for the modal itself */
-    pointer-events: auto;
     max-width: 400px;
     margin-top: 70px; /* Header height */
     margin-right: 1rem;
-    position: relative; /* For the close button */
-}
-
-.model-settings-close-btn {
-    position: absolute;
-    top: 0.75rem;
-    right: 0.75rem;
-    background: none;
-    border: none;
-    font-size: 1.8rem;
-    line-height: 1;
-    color: var(--secondary-color);
-    cursor: pointer;
-    padding: 0.5rem;
-    transition: color 0.2s ease;
-    z-index: 10;
-}
-
-.model-settings-close-btn:hover {
-    color: var(--primary-color);
 }
 
 .model-settings-modal .model-name {
@@ -44,53 +18,14 @@
     font-size: 0.8rem;
     color: var(--secondary-color);
     margin-top: -0.75rem;
-    margin-bottom: 0.5rem;
-}
-
-.modal-instruction {
-    font-size: 0.8rem;
-    color: var(--secondary-color);
-    margin-top: -0.5rem;
     margin-bottom: 1rem;
-    font-style: italic;
-    text-align: center;
-    background: var(--background-color);
-    padding: 0.25rem;
-    border-radius: 2px;
 }
-
 
 .settings-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
     gap: 1.5rem;
 }
-
-.info-group {
-    grid-column: 1 / -1;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background-color: var(--background-color);
-    padding: 0.5rem 0.75rem;
-    border: 1px solid var(--border-color);
-}
-
-.info-group label {
-    font-size: 0.6rem;
-    letter-spacing: 0.1em;
-    color: var(--secondary-color);
-    text-transform: uppercase;
-    font-weight: 500;
-}
-
-.info-group .info-value {
-    font-family: monospace;
-    font-size: 0.9rem;
-    font-weight: 700;
-    color: var(--on-surface-color);
-}
-
 
 .settings-grid .slider-group.full-width {
     grid-column: 1 / -1;
@@ -253,17 +188,9 @@ input[type="range"]:active::-moz-range-thumb {
     color: var(--on-surface-color);
 }
 
-.camera-controls-group .nested-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 1rem;
-    align-items: end;
-}
 .camera-controls-group .checkbox-group {
     padding-top: 0;
-    justify-self: start;
 }
-
 
 .preset-view-buttons {
     display: grid;

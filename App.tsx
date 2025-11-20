@@ -5,38 +5,30 @@ import { useDevice } from './contexts/DeviceContext';
 import { useSession } from './contexts/SessionContext';
 import { useSequencer, usePlayback } from './contexts/SequencerAndPlaybackProvider';
 import { useInputHandler } from './hooks/useInputHandler';
-import { defaultControls } from './constants';
 
 import { RightPanel } from './components/RightPanel';
 import { Controls } from './components/Controls';
 import { Sequencer } from './components/Sequencer';
-import { lazy, Suspense } from 'react';
-
-// Lazy load modals that use Monaco Editor (heavy components)
-const AddShaderModal = lazy(() => import('./components/modals/AddShaderModal').then(m => ({ default: m.AddShaderModal })));
-const AddMediaModal = lazy(() => import('./components/modals/AddMediaModal').then(m => ({ default: m.AddMediaModal })));
-const AddHtmlModal = lazy(() => import('./components/modals/AddHtmlModal').then(m => ({ default: m.AddHtmlModal })));
-const EditHtmlModal = lazy(() => import('./components/modals/EditHtmlModal').then(m => ({ default: m.EditHtmlModal })));
-const ModelSettingsModal = lazy(() => import('./components/modals/ModelSettingsModal').then(m => ({ default: m.ModelSettingsModal })));
-const HtmlSettingsModal = lazy(() => import('./components/modals/HtmlSettingsModal').then(m => ({ default: m.HtmlSettingsModal })));
-const HelpModal = lazy(() => import('./components/modals/HelpModal').then(m => ({ default: m.HelpModal })));
-const ConfirmDeleteModal = lazy(() => import('./components/modals/ConfirmDeleteModal').then(m => ({ default: m.ConfirmDeleteModal })));
+import { AddShaderModal } from './components/modals/AddShaderModal';
+import { AddMediaModal } from './components/modals/AddMediaModal';
+import { ModelSettingsModal } from './components/modals/ModelSettingsModal';
+import { HelpModal } from './components/modals/HelpModal';
+import { ConfirmDeleteModal } from './components/modals/ConfirmDeleteModal';
 import { ShaderErrorDisplay } from './components/ShaderErrorDisplay';
 import { Header } from './components/layout/Header';
-import { HtmlOverlay } from './components/HtmlOverlay';
 import { NUM_PAGES, SEQUENCER_STEP_OPTIONS } from './constants';
+import { BLACK_SHADER_KEY } from './gl/shaders';
 import { useWebGL } from './hooks/useWebGL';
 import './App.css';
 
 export function App() {
   const {
-    isProjectingTransition, isFullscreen, isSessionLoading, sessionLoadingDetails, isDraggingOver,
-    isRightPanelVisible, isControlsVisible, isSequencerVisible,
+    isProjectingTransition, isFullscreen, isSessionLoading, isDraggingOver,
   } = useUI();
-
+  
   const { currentPage, pageControls } = useSequencer();
-  const { isPlaying, transitionState } = usePlayback();
-
+  const { isPlaying, liveVjStep, transitionState } = usePlayback();
+  
   const { shaders, userImages, userVideos, userModels } = useLibrary();
   const { projectionWindow, audioDataRef } = useDevice();
   const { handleShaderError, handleFpsUpdate } = useUI();
@@ -46,54 +38,34 @@ export function App() {
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const canvasWrapperRef = useRef<HTMLDivElement>(null);
-  const htmlOverlayRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
+  
   useEffect(() => {
     const preloader = document.getElementById('preloader');
-    const details = document.getElementById('preloader-details');
-    if (!preloader || !details) return;
-
-    if (isSessionLoading) {
-        preloader.style.display = 'flex'; // Ensure it's not display:none
-        preloader.classList.remove('loaded');
-        details.textContent = sessionLoadingDetails;
-    } else {
-        if (!preloader.classList.contains('loaded')) {
-            preloader.classList.add('loaded');
-            const onTransitionEnd = () => {
-                // Check if it's still loaded before hiding, to avoid race conditions
-                if (preloader.classList.contains('loaded')) {
-                    preloader.style.display = 'none';
-                }
-                preloader.removeEventListener('transitionend', onTransitionEnd);
-            };
-            preloader.addEventListener('transitionend', onTransitionEnd);
-        }
+    if (preloader) {
+        preloader.classList.add('loaded');
     }
-  }, [isSessionLoading, sessionLoadingDetails]);
-
-  // Ensure currentControls is always defined with fallback to defaultControls
-  const currentControls = pageControls?.[currentPage] ?? defaultControls;
-
-  const activeShaderToRender = transitionState?.toShaderKey ?? '';
-
-  const webGLProps = {
+  }, []);
+  
+  const currentControls = pageControls[currentPage];
+  
+  const activeShaderToRender = transitionState.toShaderKey;
+  
+  const webGLProps = { 
     ...transitionState,
+    isTransitioning: (isPlaying || liveVjStep !== null) && transitionState.isTransitioning,
     isPlaying: isPlaying,
     ...currentControls,
-    fromModelSettings: transitionState.fromModelSettings,
-    toModelSettings: transitionState.toModelSettings,
     projectionWindow,
     isSessionLoading,
   };
-
+  
   useWebGL(canvasRef, webGLProps, shaders, userImages, userVideos, userModels, audioDataRef, handleShaderError, handleFpsUpdate);
-
+  
   return (
     <>
-      <Header fileInputRef={fileInputRef} canvasRef={canvasRef} canvasWrapperRef={canvasWrapperRef} htmlOverlayRef={htmlOverlayRef} />
-
+      <Header fileInputRef={fileInputRef} canvasRef={canvasRef} canvasWrapperRef={canvasWrapperRef} />
+      
       <input
         type="file"
         ref={fileInputRef}
@@ -102,13 +74,12 @@ export function App() {
         style={{ display: 'none' }}
       />
 
-      <div
-        className={`app-container ${!isRightPanelVisible ? 'right-panel-hidden' : ''}`}
+      <div 
+        className="app-container"
       >
         <div className="main-content">
           <div ref={canvasWrapperRef} className={`canvas-wrapper ${projectionWindow ? 'projection-mode' : ''} ${isFullscreen ? 'fullscreen' : ''}`}>
             <canvas id="shader-canvas" ref={canvasRef}></canvas>
-            <HtmlOverlay ref={htmlOverlayRef} />
             <ShaderErrorDisplay activeShaderKey={activeShaderToRender} />
             {isProjectingTransition && (
                 <div className="preloader-overlay">
@@ -122,37 +93,34 @@ export function App() {
             )}
           </div>
           <div className="controls-sequencer-wrapper">
-            {isSequencerVisible && (
-              <>
-                <SequencerToolbar />
-                <Sequencer />
-              </>
-            )}
-            {isControlsVisible && <Controls />}
+            <SequencerToolbar />
+            <Sequencer />
+            <Controls />
           </div>
         </div>
         <RightPanel />
       </div>
 
-      <Suspense fallback={null}>
-        <AddShaderModal />
-        <AddMediaModal />
-        <AddHtmlModal />
-        <EditHtmlModal />
-        <HtmlSettingsModal />
-        <HelpModal />
-        <ConfirmDeleteModal />
-        <ModelSettingsModal />
-      </Suspense>
+      <AddShaderModal />
+      <AddMediaModal />
+      <HelpModal />
+      <ConfirmDeleteModal />
+      <ModelSettingsModal />
 
       {isDraggingOver && <DropOverlay />}
+      {isSessionLoading && (
+        <div className="session-loader-overlay">
+            <div className="spinner"></div>
+            <p id="session-loader-details">Loading Session...</p>
+        </div>
+      )}
     </>
   );
 }
 
 const SequencerToolbar = () => {
     const { currentPage, sequencerSteps, isLoopingEnabled, editableStep, handlePageChange, handleSequencerStepsChange, toggleLoop, setLoopStart, setLoopEnd, shiftLoop, loopStart, loopEnd } = useSequencer();
-
+    
     return (
         <div className="sequencer-toolbar">
           <div className="page-buttons">

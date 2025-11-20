@@ -20,10 +20,9 @@ export const adaptShaderCode = (shaderCode) => {
     let adaptedCode = shaderCode;
     
     // 1. Rename main() to mainImage() and adapt signature
-    // Use 'inout' for GLSL ES 1.0 (WebGL 1) compatibility, as 'out' is not supported.
     adaptedCode = adaptedCode.replace(
         mainFunctionRegex,
-        "void mainImage(inout vec4 fragColor, in vec2 fragCoord)"
+        "void mainImage(out vec4 fragColor, in vec2 fragCoord)"
     );
 
     // 2. Remove uniform declarations that are provided by the app's wrapper
@@ -85,11 +84,7 @@ export const getFragmentShaderSrc = (shaderCode) => {
     // Convert back to fragment coordinates
     vec2 seamless_fragCoord = mirrored_uv * iResolution.xy;
     
-    // FIX: Declare a local variable to pass to mainImage. Passing gl_FragColor as an
-    // argument is illegal in all versions of GLSL. Initialize for 'inout'.
-    vec4 outColor = vec4(0.0);
-    mainImage(outColor, seamless_fragCoord);
-    gl_FragColor = outColor;
+    mainImage(gl_FragColor, seamless_fragCoord);
   }
 `;
 };

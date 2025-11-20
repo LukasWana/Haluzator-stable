@@ -1,5 +1,5 @@
 {
-  "name": "Haluzator - stable version",
+  "name": "Haluzator Shaders + Images + Videos + 3D",
   "description": "play realtime animation",
   "requestFramePermissions": [
     "microphone"

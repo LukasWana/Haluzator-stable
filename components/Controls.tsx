@@ -2,17 +2,13 @@ import React from 'react';
 import { useSequencer, usePlayback } from '../contexts/SequencerAndPlaybackProvider';
 import { useLibrary } from '../contexts/LibraryContext';
 import { useUI } from '../contexts/UIContext';
-import { defaultControls } from '../constants';
 import './Controls.css';
 
 export const Controls: React.FC = () => {
     const { pageControls, currentPage, handleControlChange } = useSequencer();
 
     if (!pageControls[currentPage]) return null;
-    // Merge with defaultControls to ensure all values are defined
-    const currentControls = { ...defaultControls, ...pageControls[currentPage] };
-
-    const tempo = currentControls.stepsPerMinute;
+    const currentControls = pageControls[currentPage];
 
     return (
         <div className="controls">
@@ -20,15 +16,9 @@ export const Controls: React.FC = () => {
               <div className="slider-group">
                 <div className="slider-label-container">
                   <label>TEMPO</label>
-                  <span className="slider-value">{tempo}</span>
+                  <span className="slider-value">{currentControls.stepsPerMinute}</span>
                 </div>
-                <input
-                  type="range"
-                  min="6"
-                  max="120"
-                  value={tempo}
-                  onChange={e => handleControlChange('stepsPerMinute', parseInt(e.target.value))}
-                />
+                <input type="range" min="6" max="120" value={currentControls.stepsPerMinute} onChange={e => handleControlChange('stepsPerMinute', parseInt(e.target.value))} />
               </div>
               <div className="slider-group">
                 <div className="slider-label-container">

@@ -2,20 +2,11 @@ import * as THREE from 'three';
 
 export const generateModelPreview = (
     name: string,
-    geometry: THREE.BufferGeometry,
+    geometry: any, // THREE.BufferGeometry
     onPreviewGenerated: (key: string, dataUrl: string) => void
 ) => {
-    // Generate preview in a non-blocking way using requestIdleCallback if available
-    // Falls back to setTimeout for browsers that don't support it
-    const scheduleWork = (callback: () => void) => {
-        if ('requestIdleCallback' in window) {
-            requestIdleCallback(callback, { timeout: 100 });
-        } else {
-            setTimeout(callback, 16);
-        }
-    };
-
-    scheduleWork(() => {
+    // Generate preview in a non-blocking way
+    setTimeout(() => {
         try {
             const width = 128;
             const height = 128;
@@ -45,19 +36,19 @@ export const generateModelPreview = (
 
             mesh.scale.set(scale, scale, scale);
             mesh.position.sub(center.multiplyScalar(scale));
-
+            
             scene.add(mesh);
 
             const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, preserveDrawingBuffer: true, powerPreference: 'low-power' });
             renderer.setSize(width, height);
-
+            
             mesh.rotation.x = 0.4;
             mesh.rotation.y = 0.5;
             renderer.render(scene, camera);
-
+            
             const dataUrl = renderer.domElement.toDataURL('image/webp', 0.8);
             onPreviewGenerated(name, dataUrl);
-
+            
             renderer.dispose();
             renderer.forceContextLoss();
 

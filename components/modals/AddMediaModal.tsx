@@ -129,9 +129,8 @@ export function AddMediaModal() {
     if (!isAddMediaModalOpen) return null;
 
     return (
-        <div className="modal-overlay">
+        <div className="modal-overlay" onClick={handleClose}>
             <div className="modal-content" onClick={e => e.stopPropagation()}>
-                <button className="modal-close-button" onClick={handleClose} aria-label="Close">&times;</button>
                 <h2>Add Media</h2>
                 {error && <p className="modal-error">{error}</p>}
                 

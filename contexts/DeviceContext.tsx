@@ -1,14 +1,12 @@
 import React, { createContext, useState, useCallback, useMemo, useRef, useContext } from 'react';
 import type { DeviceContextValue } from '../types';
 import { useUI } from './UIContext';
-import { useToast } from '../components/Toast';
 
 export const DeviceContext = createContext<DeviceContextValue | undefined>(undefined);
 
 export const DeviceProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const { setIsProjectingTransition } = useUI();
-    const { showWarning } = useToast();
-
+    
     const [midiInputs, setMidiInputs] = useState<any[]>([]);
     const [selectedMidiInputId, setSelectedMidiInputId] = useState<string>('');
     const [projectionWindow, setProjectionWindow] = useState<Window | null>(null);
@@ -18,11 +16,10 @@ export const DeviceProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const audioContextRef = useRef<AudioContext | null>(null);
     const streamRef = useRef<MediaStream | null>(null);
     const audioLoopRef = useRef<number | null>(null);
-
+    
     const originalCanvasParentRef = useRef<HTMLElement | null>(null);
-    const originalOverlayParentRef = useRef<HTMLElement | null>(null);
     const canvasRefForProjection = useRef<HTMLCanvasElement | null>(null);
-    const overlayRefForProjection = useRef<HTMLDivElement | null>(null);
+
 
     const toggleAudio = useCallback(async () => {
         if (audioContextRef.current?.state === 'running') {
@@ -58,51 +55,22 @@ export const DeviceProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         } catch (err) { console.error('Error accessing microphone:', err); setAudioState('error'); }
     }, []);
 
-    const handleProjectionToggle = useCallback((canvasElement: HTMLCanvasElement | null, wrapperElement: HTMLDivElement | null, htmlOverlayElement: HTMLDivElement | null) => {
+    const handleProjectionToggle = useCallback((canvasElement: HTMLCanvasElement | null, wrapperElement: HTMLDivElement | null) => {
         if (projectionWindow) {
             projectionWindow.close();
         } else {
-            if (!canvasElement || !wrapperElement || !htmlOverlayElement) return;
+            if (!canvasElement || !wrapperElement) return;
             setIsProjectingTransition(true);
             const newWindow = window.open('', '_blank', 'width=800,height=600,menubar=no,toolbar=no,location=no,status=no');
             if (newWindow) {
                 newWindow.document.title = "Shader Projection";
                 newWindow.document.body.style.cssText = 'margin:0;overflow:hidden;background-color:black;';
-
-                // Copy all stylesheets from the main document to the new window
-                Array.from(document.styleSheets).forEach(styleSheet => {
-                    try {
-                        // If we can access the rules, create a <style> tag with the content
-                        const cssRules = Array.from(styleSheet.cssRules).map(rule => rule.cssText).join(' ');
-                        const styleElement = newWindow.document.createElement('style');
-                        styleElement.textContent = cssRules;
-                        newWindow.document.head.appendChild(styleElement);
-                    } catch (e) {
-                        // If we can't access cssRules (e.g., for cross-origin stylesheets), create a <link> tag
-                        if (styleSheet.href) {
-                            const linkElement = newWindow.document.createElement('link');
-                            linkElement.rel = 'stylesheet';
-                            linkElement.href = styleSheet.href;
-                            newWindow.document.head.appendChild(linkElement);
-                        }
-                    }
-                });
-
                 originalCanvasParentRef.current = wrapperElement;
-                originalOverlayParentRef.current = htmlOverlayElement.parentElement;
-
                 canvasRefForProjection.current = canvasElement;
-                overlayRefForProjection.current = htmlOverlayElement;
-
                 newWindow.document.body.appendChild(canvasElement);
-                newWindow.document.body.appendChild(htmlOverlayElement);
-
                 newWindow.onbeforeunload = () => {
                     if (originalCanvasParentRef.current && canvasRefForProjection.current) {
-                        originalCanvasParentRef.current.prepend(canvasRefForProjection.current);
-                    }
-                    if (originalOverlayParentRef.current && overlayRefForProjection.current) {
-                        originalOverlayParentRef.current.appendChild(overlayRefForProjection.current);
+                        originalCanvasParentRef.current.appendChild(canvasRefForProjection.current);
                     }
                     setProjectionWindow(null);
                 };
@@ -110,11 +78,11 @@ export const DeviceProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                 setTimeout(() => setIsProjectingTransition(false), 500);
             } else {
                  setIsProjectingTransition(false);
-                 showWarning('Popup blocked! Please allow popups for this site.');
+                 alert('Popup blocked! Please allow popups for this site.');
             }
         }
     }, [projectionWindow, setIsProjectingTransition]);
-
+    
     const value = useMemo(() => ({
         midiInputs, selectedMidiInputId, projectionWindow, audioState, audioDataRef,
         setMidiInputs, setSelectedMidiInputId, toggleAudio, handleProjectionToggle,
