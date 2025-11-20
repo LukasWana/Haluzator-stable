@@ -30,17 +30,17 @@ const simpleHash = (str: string) => {
 export const SessionContext = createContext<SessionContextValue | undefined>(undefined);
 
 export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    const { 
+    const {
         // FIX: Destructure state variables needed for saving the session.
         userShaders, userImages, userVideos, userModels, userHtml,
-        setUserShaders, setUserImages, setUserVideos, setUserModels, setUserHtml, handlePreviewGenerated, handleModelPreviewGenerated, setShaderPreviews 
+        setUserShaders, setUserImages, setUserVideos, setUserModels, setUserHtml, handlePreviewGenerated, handleModelPreviewGenerated, setShaderPreviews
     } = useLibrary();
-    
-    const { 
+
+    const {
         // FIX: Destructure state variables needed for saving the session.
         shaderSequences, mediaSequences, currentPage, pageControls, sequencerSteps, isLoopingEnabled, loopStart, loopEnd,
-        setShaderSequences, setMediaSequences, setCurrentPage, setPageControls, 
-        setSequencerSteps, setIsLoopingEnabled, setLoopStart, setLoopEnd 
+        setShaderSequences, setMediaSequences, setCurrentPage, setPageControls,
+        setSequencerSteps, setIsLoopingEnabled, setLoopStart, setLoopEnd
     } = useSequencer();
 
     const { setIsSessionLoading, setSessionLoadingDetails } = useUI();
@@ -54,7 +54,7 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
                     return [key, { dataUrl: await fileToDataUrl(video.file), fileName: video.file.name }];
                 })
             );
-            
+
             setSessionLoadingDetails('Serializing 3D models...');
             const serializableModels = await Promise.all(
                 Object.entries(userModels).map(async ([key, model]: [string, UserModel]) => {
@@ -66,21 +66,21 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
             setSessionLoadingDetails('Packaging session data...');
             // FIX: Remove incorrect .getState() calls and use state variables from hooks directly.
 
-            const sessionData = { 
-                version: SESSION_FILE_VERSION, 
-                userShaders, 
-                userImages, 
+            const sessionData = {
+                version: SESSION_FILE_VERSION,
+                userShaders,
+                userImages,
                 userVideos: Object.fromEntries(serializableVideos),
                 userModels: Object.fromEntries(serializableModels),
                 userHtml,
-                shaderSequences, 
-                mediaSequences, 
-                currentPage, 
-                pageControls, 
-                sequencerSteps, 
-                isLoopingEnabled, 
-                loopStart, 
-                loopEnd 
+                shaderSequences,
+                mediaSequences,
+                currentPage,
+                pageControls,
+                sequencerSteps,
+                isLoopingEnabled,
+                loopStart,
+                loopEnd
             };
             const blob = new Blob([JSON.stringify(sessionData, null, 2)], { type: 'application/json' });
             const a = document.createElement('a');
@@ -88,8 +88,8 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
             a.download = `shader-session-${new Date().toISOString().slice(0, 10)}.json`;
             a.click();
             URL.revokeObjectURL(a.href);
-        } catch (error) { 
-            console.error("Failed to save session:", error); 
+        } catch (error) {
+            console.error("Failed to save session:", error);
         } finally {
             setIsSessionLoading(false);
         }
@@ -135,7 +135,7 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
                 return currentPage;
             });
         };
-        
+
         sanitizedData.shaderSequences = resizeOnLoad(sanitizedData.shaderSequences, null);
         sanitizedData.mediaSequences = resizeOnLoad(sanitizedData.mediaSequences, () => ({ key: null }));
 
@@ -148,18 +148,18 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
             }
             sanitizedData.pageControls = newPageControls;
         }
-        
+
         setSessionLoadingDetails('Merging library items...');
-        
+
         const loadedShaders = (sanitizedData.userShaders || {}) as UserShaders;
         const loadedHtml = (sanitizedData.userHtml || {}) as UserHtmls;
-        
+
         setUserShaders(loadedShaders);
         setUserImages(sanitizedData.userImages || {});
         setUserHtml(loadedHtml);
         localStorage.setItem(USER_SHADERS_STORAGE_KEY, JSON.stringify(loadedShaders));
         localStorage.setItem(USER_HTML_STORAGE_KEY, JSON.stringify(loadedHtml));
-        
+
         setSessionLoadingDetails('Restoring videos...');
         if (sanitizedData.userVideos) {
             const newVideos: UserVideos = {};
@@ -203,7 +203,7 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
             }
             setUserModels(newModels);
         }
-        
+
         setSessionLoadingDetails('Restoring sequences...');
         setSequencerSteps(sanitizedData.sequencerSteps);
         setShaderSequences(sanitizedData.shaderSequences);
@@ -213,9 +213,9 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
         setIsLoopingEnabled(sanitizedData.isLoopingEnabled);
         setLoopStart(sanitizedData.loopStart);
         setLoopEnd(sanitizedData.loopEnd);
-        
+
         setSessionLoadingDetails('Generating previews...');
-        
+
         const defaultShadersHash = simpleHash(JSON.stringify(SHADERS));
         let cachedData: { version?: string; previews?: Record<string, any> } = {};
         try { const item = localStorage.getItem(SHADER_PREVIEWS_CACHE_KEY); if (item) cachedData = JSON.parse(item); } catch (e) { console.error("Failed to parse shader preview cache", e); }
@@ -244,10 +244,10 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
         });
 
         setShaderPreviews(previewsToSet);
-        
+
         if (Object.keys(shadersToGenerate).length > 0) {
             await generateShaderPreviews(
-                shadersToGenerate, 
+                shadersToGenerate,
                 handlePreviewGenerated,
                 (key, current, total) => setSessionLoadingDetails(`Generating previews... (${current}/${total})`)
             );
@@ -272,13 +272,13 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
         try {
             const sessionData = JSON.parse(await file.text());
             await loadSessionData(sessionData);
-        } catch (error) { 
+        } catch (error) {
             console.error("Failed to load session:", error);
             alert("Failed to load session file. It might be corrupted or an incompatible version.");
-        } 
-        finally { 
-            setIsSessionLoading(false); 
-            if (event.target) event.target.value = ''; 
+        }
+        finally {
+            setIsSessionLoading(false);
+            if (event.target) event.target.value = '';
         }
     }, [loadSessionData, setIsSessionLoading, setSessionLoadingDetails]);
 
@@ -287,15 +287,70 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
             setIsSessionLoading(true);
             try {
                 setSessionLoadingDetails('Loading default session...');
-                const response = await fetch('media/001.json');
-                if (!response.ok) {
-                    throw new Error('Failed to fetch default session file media/001.json. Please ensure it exists.');
+
+                // Check if we're running in Electron
+                const electronAPI = (window as any).electronAPI;
+                let sessionData: any = null;
+
+                if (electronAPI && electronAPI.readFile) {
+                    // Use Electron API to read file (works in packaged app)
+                    const filePaths = [
+                        'dist/media/001.json',  // In packaged app, files are in dist/
+                        'media/001.json',        // Fallback
+                        'dist/../media/001.json' // Another fallback
+                    ];
+
+                    for (const filePath of filePaths) {
+                        try {
+                            const result = await electronAPI.readFile(filePath);
+                            if (result.success) {
+                                console.log('Successfully loaded session from:', filePath);
+                                sessionData = JSON.parse(result.content);
+                                break;
+                            }
+                        } catch (err) {
+                            console.warn(`Failed to load from ${filePath}:`, err);
+                            continue;
+                        }
+                    }
+                } else {
+                    // Fallback to fetch (works in dev mode and browser)
+                    const paths = [
+                        './media/001.json',
+                        'media/001.json',
+                        '../media/001.json'
+                    ];
+
+                    let response: Response | null = null;
+
+                    for (const filePath of paths) {
+                        try {
+                            response = await fetch(filePath);
+                            if (response.ok) {
+                                console.log('Successfully loaded session from:', filePath);
+                                sessionData = await response.json();
+                                break;
+                            }
+                        } catch (err) {
+                            console.warn(`Failed to load from ${filePath}:`, err);
+                            continue;
+                        }
+                    }
                 }
-                const sessionData = await response.json();
+
+                if (!sessionData) {
+                    // If all paths fail, try to create empty session
+                    console.warn('Could not load default session file, starting with empty session');
+                    setSessionLoadingDetails('Starting with empty session...');
+                    // Don't throw error, just continue with empty state
+                    return;
+                }
+
                 await loadSessionData(sessionData);
             } catch (error) {
                 console.error("Failed to load initial session:", error);
-                alert((error as Error).message);
+                // Don't show alert, just log and continue with empty session
+                console.warn("Continuing with empty session state");
             } finally {
                 setIsSessionLoading(false);
             }

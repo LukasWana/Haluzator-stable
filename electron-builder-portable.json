@@ -1,0 +1,22 @@
+{
+  "appId": "com.haluzator.app",
+  "productName": "Haluzator",
+  "directories": {
+    "output": "release"
+  },
+  "files": [
+    "dist/**/*",
+    "dist-electron/**/*",
+    "media/**/*",
+    "assets/**/*",
+    "package.json"
+  ],
+  "win": {
+    "target": "portable",
+    "icon": "assets/icon.png"
+  },
+  "portable": {
+    "artifactName": "${productName}-${version}-portable.${ext}"
+  }
+}
+
