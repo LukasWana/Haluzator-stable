@@ -1,26 +1,83 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { useUI } from '../contexts/UIContext';
 import { useLibrary } from '../contexts/LibraryContext';
 import { useSequencer, usePlayback } from '../contexts/SequencerAndPlaybackProvider';
+import { HtmlThumbnail } from './HtmlThumbnail';
 import './LibraryTab.css';
 
 export const LibraryTab: React.FC = () => {
-  const { selectedItem, setSelectedItem, setIsAddShaderModalOpen, setIsAddMediaModalOpen, setIsConfirmDeleteModalOpen, setItemToDelete, setIsModelSettingsModalOpen } = useUI();
-  const { userImages, userVideos, userModels, modelPreviews, userShaders, shaderPreviews } = useLibrary();
-  const { mediaSequences, currentPage, editableStep, activeShaderKey } = useSequencer();
+  // FIX: Destructure `itemToDelete` from useUI() to make it available in the component scope.
+  const { selectedItem, setSelectedItem, setIsAddShaderModalOpen, setIsAddMediaModalOpen, setIsAddHtmlModalOpen, setIsEditHtmlModalOpen, setIsConfirmDeleteModalOpen, setItemToDelete, itemToDelete } = useUI();
+  const { userImages, userVideos, userModels, userHtml, modelPreviews, userShaders, shaderPreviews, updateMediaName } = useLibrary();
+  const { mediaSequences, currentPage, editableStep, activeShaderKey, renameSequencerItem } = useSequencer();
   const { isPlaying, currentStep } = usePlayback();
+
+  const [editingKey, setEditingKey] = useState<string | null>(null);
+  const [newName, setNewName] = useState('');
 
   const activeShaderKeyRef = useRef(activeShaderKey);
   activeShaderKeyRef.current = activeShaderKey;
   
   const activeSequencerMediaKey = mediaSequences[currentPage][isPlaying ? currentStep : editableStep]?.key;
-  const isMediaSelected = selectedItem in userImages || selectedItem in userVideos || selectedItem in userModels;
+  const isMediaSelected = selectedItem in userImages || selectedItem in userVideos || selectedItem in userModels || selectedItem in userHtml;
   
   const handleDeleteClick = (e: React.MouseEvent, key: string, type: 'media' | 'shader') => {
       e.stopPropagation();
       setItemToDelete({ key, type });
       setIsConfirmDeleteModalOpen(true);
   };
+
+  const handleEditHtmlClick = (e: React.MouseEvent, key: string) => {
+    e.stopPropagation();
+    setSelectedItem(key);
+    setIsEditHtmlModalOpen(true);
+  };
+
+  const handleEditDoubleClick = (key: string) => {
+    setEditingKey(key);
+    setNewName(key);
+  };
+
+  const cancelEdit = () => {
+    setEditingKey(null);
+    setNewName('');
+  };
+
+  const handleNameSubmit = async () => {
+    if (!editingKey) return;
+
+    const oldKey = editingKey;
+    const trimmedNewName = newName.trim();
+
+    if (trimmedNewName === '' || trimmedNewName === oldKey) {
+        cancelEdit();
+        return;
+    }
+
+    const success = await updateMediaName(oldKey, trimmedNewName);
+
+    if (success) {
+        renameSequencerItem(oldKey, trimmedNewName);
+        if (selectedItem === oldKey) {
+            setSelectedItem(trimmedNewName);
+        }
+        if (itemToDelete && itemToDelete.key === oldKey) {
+            setItemToDelete({ ...itemToDelete, key: trimmedNewName });
+        }
+        cancelEdit();
+    }
+    // Error alert is handled in context, so we just don't cancel edit on failure
+  };
+
+  const handleNameKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === 'Enter') {
+          e.preventDefault();
+          handleNameSubmit();
+      } else if (e.key === 'Escape') {
+          cancelEdit();
+      }
+  };
+
 
   return (
     <>
@@ -33,6 +90,9 @@ export const LibraryTab: React.FC = () => {
           <button className="add-media-button" title="Add Image, Video, or 3D Model" onClick={() => setIsAddMediaModalOpen(true)}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"></path></svg>
           </button>
+          <button className="add-html-button" title="Add HTML Overlay" onClick={() => setIsAddHtmlModalOpen(true)}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M9.4 16.6L4.8 12l4.6-4.6L8 6l-6 6 6 6 1.4-1.4zm5.2 0l4.6-4.6-4.6-4.6L16 6l6 6-6 6-1.4-1.4z"></path></svg>
+          </button>
         </div>
       </div>
 
@@ -43,6 +103,11 @@ export const LibraryTab: React.FC = () => {
              <div className="media-thumbnail-wrapper">
                 <div className="media-thumbnail" style={{backgroundImage: `url(${userImages[key]})`}}></div>
              </div>
+             {editingKey === key ? (
+                <input type="text" value={newName} onChange={(e) => setNewName(e.target.value)} onBlur={handleNameSubmit} onKeyDown={handleNameKeyDown} onClick={e => e.stopPropagation()} className="media-item-name-input" autoFocus onFocus={(e) => e.target.select()} />
+             ) : (
+                <span className="media-item-name" onDoubleClick={() => handleEditDoubleClick(key)} title="Double-click to rename">{key}</span>
+             )}
              <button className="delete-media-button" onClick={(e) => handleDeleteClick(e, key, 'media')} title={`Delete ${key}`}>
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"></path></svg>
              </button>
@@ -56,10 +121,38 @@ export const LibraryTab: React.FC = () => {
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"></path></svg>
                 </div>
              </div>
+             {editingKey === key ? (
+                <input type="text" value={newName} onChange={(e) => setNewName(e.target.value)} onBlur={handleNameSubmit} onKeyDown={handleNameKeyDown} onClick={e => e.stopPropagation()} className="media-item-name-input" autoFocus onFocus={(e) => e.target.select()} />
+             ) : (
+                <span className="media-item-name" onDoubleClick={() => handleEditDoubleClick(key)} title="Double-click to rename">{key}</span>
+             )}
              <button className="delete-media-button" onClick={(e) => handleDeleteClick(e, key, 'media')} title={`Delete ${key}`}>
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"></path></svg>
              </button>
           </div>
+        ))}
+      </div>
+      
+      <hr className="list-separator" />
+      <h4 className="list-subheader">HTML Overlays</h4>
+       <div className="user-media-grid">
+        {Object.keys(userHtml).map(key => (
+            <div key={key} className={`user-media-grid-item ${selectedItem === key ? 'selected' : ''} ${activeSequencerMediaKey === key ? 'playing' : ''}`} onClick={() => setSelectedItem(key)}>
+                <div className="media-thumbnail-wrapper">
+                    <HtmlThumbnail content={userHtml[key]} />
+                </div>
+                {editingKey === key ? (
+                    <input type="text" value={newName} onChange={(e) => setNewName(e.target.value)} onBlur={handleNameSubmit} onKeyDown={handleNameKeyDown} onClick={e => e.stopPropagation()} className="media-item-name-input" autoFocus onFocus={(e) => e.target.select()} />
+                ) : (
+                    <span className="media-item-name" onDoubleClick={() => handleEditDoubleClick(key)} title="Double-click to rename">{key}</span>
+                )}
+                <button className="delete-media-button" onClick={(e) => handleDeleteClick(e, key, 'media')} title={`Delete ${key}`}>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"></path></svg>
+                </button>
+                <button className="settings-model-button html-edit-button" onClick={(e) => handleEditHtmlClick(e, key)} title={`Edit Content of ${key}`}>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"></path></svg>
+                </button>
+            </div>
         ))}
       </div>
 
@@ -78,9 +171,11 @@ export const LibraryTab: React.FC = () => {
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5-10-5-10 5zM12 13.5l-10-5V13l10 5 10-5V8.5l-10 5z"></path></svg>
                     </div>
                 </div>
-                <button className="settings-model-button" onClick={(e) => { e.stopPropagation(); setSelectedItem(key); setIsModelSettingsModalOpen(true); }} title={`Settings for ${key}`}>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M19.43 12.98c.04-.32.07-.64.07-.98s-.03-.66-.07-.98l2.11-1.65c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.3-.61-.22l-2.49 1c-.52-.4-1.08-.73-1.69-.98l-.38-2.65C14.46 2.18 14.25 2 14 2h-4c-.25 0-.46.18-.49.42l-.38 2.65c-.61.25-1.17.59-1.69.98l-2.49-1c-.23-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64l2.11 1.65c-.04.32-.07.65-.07.98s.03.66.07.98l-2.11 1.65c-.19.15-.24.42-.12.64l2 3.46c.12.22.39.3.61.22l2.49-1c.52.4 1.08.73 1.69.98l.38 2.65c.03.24.24.42.49.42h4c.25 0 .46-.18.49-.42l.38-2.65c.61-.25 1.17-.59 1.69-.98l2.49 1c.23.09.49 0 .61-.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.65zM12 15.5c-1.93 0-3.5-1.57-3.5-3.5s1.57-3.5 3.5-3.5 3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5z"/></svg>
-                </button>
+                {editingKey === key ? (
+                    <input type="text" value={newName} onChange={(e) => setNewName(e.target.value)} onBlur={handleNameSubmit} onKeyDown={handleNameKeyDown} onClick={e => e.stopPropagation()} className="media-item-name-input" autoFocus onFocus={(e) => e.target.select()} />
+                ) : (
+                    <span className="media-item-name" onDoubleClick={() => handleEditDoubleClick(key)} title="Double-click to rename">{key}</span>
+                )}
                 <button className="delete-media-button" onClick={(e) => handleDeleteClick(e, key, 'media')} title={`Delete ${key}`}>
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"></path></svg>
                 </button>
@@ -105,9 +200,13 @@ export const LibraryTab: React.FC = () => {
               ) : (
                 <div className="shader-preview-placeholder"></div>
               )}
-              <span className="shader-item-name">{key}</span>
+              {editingKey === key ? (
+                <input type="text" value={newName} onChange={(e) => setNewName(e.target.value)} onBlur={handleNameSubmit} onKeyDown={handleNameKeyDown} onClick={e => e.stopPropagation()} className="shader-item-name-input" autoFocus onFocus={(e) => e.target.select()} />
+              ) : (
+                <span className="shader-item-name" onDoubleClick={() => handleEditDoubleClick(key)} title="Double-click to rename">{key}</span>
+              )}
               <button className="delete-shader-button" onClick={(e) => handleDeleteClick(e, key, 'shader')} title={`Delete ${key}`}>
-                &times;
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"></path></svg>
               </button>
             </div>
           );

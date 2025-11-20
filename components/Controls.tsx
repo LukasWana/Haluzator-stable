@@ -9,6 +9,8 @@ export const Controls: React.FC = () => {
 
     if (!pageControls[currentPage]) return null;
     const currentControls = pageControls[currentPage];
+    
+    const tempo = currentControls.stepsPerMinute;
 
     return (
         <div className="controls">
@@ -16,9 +18,15 @@ export const Controls: React.FC = () => {
               <div className="slider-group">
                 <div className="slider-label-container">
                   <label>TEMPO</label>
-                  <span className="slider-value">{currentControls.stepsPerMinute}</span>
+                  <span className="slider-value">{tempo}</span>
                 </div>
-                <input type="range" min="6" max="120" value={currentControls.stepsPerMinute} onChange={e => handleControlChange('stepsPerMinute', parseInt(e.target.value))} />
+                <input
+                  type="range"
+                  min="6"
+                  max="120"
+                  value={tempo}
+                  onChange={e => handleControlChange('stepsPerMinute', parseInt(e.target.value))}
+                />
               </div>
               <div className="slider-group">
                 <div className="slider-label-container">

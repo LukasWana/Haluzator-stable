@@ -4,6 +4,7 @@ import { usePlayback } from '../../contexts/SequencerAndPlaybackProvider';
 import { useDevice } from '../../contexts/DeviceContext';
 import { useSession } from '../../contexts/SessionContext';
 import { MidiComponent } from '../MidiComponent';
+import { AbletonLinkComponent } from '../AbletonLinkComponent';
 import { AppLogo } from './AppLogo';
 import './Header.css';
 
@@ -11,10 +12,11 @@ interface HeaderProps {
   fileInputRef: React.RefObject<HTMLInputElement>;
   canvasRef: React.RefObject<HTMLCanvasElement>;
   canvasWrapperRef: React.RefObject<HTMLDivElement>;
+  htmlOverlayRef: React.RefObject<HTMLDivElement>;
 }
 
-export const Header: React.FC<HeaderProps> = ({ fileInputRef, canvasRef, canvasWrapperRef }) => {
-  const { isFullscreen, fpsDisplay, setIsHelpModalOpen, handleFullscreenToggle } = useUI();
+export const Header: React.FC<HeaderProps> = ({ fileInputRef, canvasRef, canvasWrapperRef, htmlOverlayRef }) => {
+  const { isFullscreen, fpsDisplay, setIsHelpModalOpen, handleFullscreenToggle, isRightPanelVisible, setIsRightPanelVisible, isControlsVisible, setIsControlsVisible, isSequencerVisible, setIsSequencerVisible } = useUI();
   const { isPlaying, togglePlay } = usePlayback();
   const { audioState, projectionWindow, toggleAudio, handleProjectionToggle } = useDevice();
   const { handleSaveSession } = useSession();
@@ -46,7 +48,7 @@ export const Header: React.FC<HeaderProps> = ({ fileInputRef, canvasRef, canvasW
               }
             </svg>
           </button>
-          <button className={`header-icon-button ${projectionWindow ? 'active' : ''}`} onClick={() => handleProjectionToggle(canvasRef.current, canvasWrapperRef.current)} title="Open Projection Window">
+          <button className={`header-icon-button ${projectionWindow ? 'active' : ''}`} onClick={() => handleProjectionToggle(canvasRef.current, canvasWrapperRef.current, htmlOverlayRef.current)} title="Open Projection Window">
             <svg viewBox="0 0 24 24" fill="currentColor">
               <path d="M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/>
             </svg>
@@ -61,7 +63,19 @@ export const Header: React.FC<HeaderProps> = ({ fileInputRef, canvasRef, canvasW
             <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 6h-8l-2-2H4c-1.11 0-2 .89-2 2v12c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zm-1 8h-3v3h-2v-3h-3v-2h3V9h2v3h3v2z"></path></svg>
           </button>
         </div>
+        <div className="panel-toggles">
+            <button className={`header-icon-button ${!isSequencerVisible ? 'active' : ''}`} onClick={() => setIsSequencerVisible(p => !p)} title={isSequencerVisible ? "Hide Sequencer" : "Show Sequencer"}>
+                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 3h18v4H3zm0 7h18v4H3zm0 7h18v4H3z"></path></svg>
+            </button>
+            <button className={`header-icon-button ${!isControlsVisible ? 'active' : ''}`} onClick={() => setIsControlsVisible(p => !p)} title={isControlsVisible ? "Hide Controls" : "Show Controls"}>
+                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 17v2h6v-2H3zM3 5v2h10V5H3zm10 16v-2h8v-2h-8v-2h-2v6h10zM7 9v2H3v2h4v2h2V9H7zm14 4v-2H11v2h10zm-6-4h2V7h4V5h-4V3h-2v6z"></path></svg>
+            </button>
+            <button className={`header-icon-button ${!isRightPanelVisible ? 'active' : ''}`} onClick={() => setIsRightPanelVisible(p => !p)} title={isRightPanelVisible ? "Hide Right Panel" : "Show Right Panel"}>
+                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 19V4h8v15h-8zm-2 0H3V4h8v15z"></path></svg>
+            </button>
+        </div>
         <div className="status-indicators">
+          <AbletonLinkComponent />
           <MidiComponent />
         </div>
       </div>

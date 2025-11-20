@@ -1,0 +1,24 @@
+.html-thumbnail-wrapper {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    position: relative;
+    /* background-color is set dynamically via inline style based on htmlSettings */
+}
+
+.html-thumbnail-iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+    pointer-events: none;
+    user-select: none;
+    background-color: transparent;
+}
+
+.url-placeholder {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: var(--primary-variant-color);
+    color: var(--secondary-color);
+}

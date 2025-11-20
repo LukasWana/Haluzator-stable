@@ -31,8 +31,9 @@ export function ConfirmDeleteModal() {
     const message = `Are you sure you want to delete "${itemToDelete.key}"? This action cannot be undone.`;
 
     return (
-        <div className="modal-overlay" onClick={handleClose}>
+        <div className="modal-overlay">
             <div className="modal-content" onClick={e => e.stopPropagation()}>
+                <button className="modal-close-button" onClick={handleClose} aria-label="Close">&times;</button>
                 <h2>Confirm Deletion</h2>
                 <p style={{color: 'var(--on-surface-color)', lineHeight: 1.6}}>{message}</p>
                 

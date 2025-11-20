@@ -1,61 +1,24 @@
 {
-  "name": "haluzator-shaders-+-images-+-videos-+-3d",
+  "name": "haluzator---stable-version",
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "main": "dist-electron/main.js",
   "scripts": {
     "dev": "vite",
-    "build": "vite build && vite build --config electron.vite.config.ts && electron-builder",
-    "build:win": "vite build && vite build --config electron.vite.config.ts && electron-builder --win",
-    "build:mac": "vite build && vite build --config electron.vite.config.ts && electron-builder --mac",
-    "build:linux": "vite build && vite build --config electron.vite.config.ts && electron-builder --linux",
-    "build:electron": "vite build --config electron.vite.config.ts",
-    "electron:dev": "vite build && vite build --config electron.vite.config.ts && electron .",
-    "electron:pack": "electron-builder",
+    "build": "vite build",
     "preview": "vite preview"
   },
   "dependencies": {
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
-    "three": "^0.180.0"
+    "@google/genai": "^1.20.0",
+    "three": "^0.180.0",
+    "monaco-editor": "^0.54.0"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
-    "@types/electron": "^1.6.10",
     "@vitejs/plugin-react": "^5.0.0",
-    "electron": "^33.3.0",
-    "electron-builder": "^25.1.8",
     "typescript": "~5.8.2",
     "vite": "^6.2.0"
-  },
-  "build": {
-    "appId": "com.haluzator.app",
-    "productName": "Haluzator",
-    "directories": {
-      "output": "release"
-    },
-    "files": [
-      "dist/**/*",
-      "dist-electron/**/*",
-      "package.json"
-    ],
-    "win": {
-      "target": [
-        {
-          "target": "nsis",
-          "arch": [
-            "x64"
-          ]
-        }
-      ],
-      "icon": "build/icon.ico"
-    },
-    "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true,
-      "createDesktopShortcut": true,
-      "createStartMenuShortcut": true
-    }
   }
 }

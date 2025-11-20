@@ -5,15 +5,15 @@ import { SequencerStep } from './SequencerStep';
 import './Sequencer.css';
 
 export const Sequencer = React.memo(function Sequencer() {
-    const { 
+    const {
         shaderSequences, mediaSequences, currentPage, sequencerSteps, isLoopingEnabled,
         loopStart, loopEnd, pageControls, editableStep,
         isSelectingLoop, startLoopSelection, updateLoopSelection, endLoopSelection,
         handleStepClick
     } = useSequencer();
-    
+
     const { isPlaying, currentStep, liveVjStep } = usePlayback();
-    const { userImages, userVideos, userModels, modelPreviews, shaderPreviews } = useLibrary();
+    const { userImages, userVideos, userModels, userHtml, modelPreviews, shaderPreviews } = useLibrary();
 
     const shaderSequence = shaderSequences[currentPage].slice(0, sequencerSteps);
     const mediaSequence = mediaSequences[currentPage].slice(0, sequencerSteps);
@@ -75,7 +75,7 @@ export const Sequencer = React.memo(function Sequencer() {
             updateLoopSelection(index);
         }
     }, [isSelectingLoop, updateLoopSelection]);
-    
+
     const handleLocalClick = useCallback((index: number, type: 'media' | 'shader', e: React.MouseEvent<HTMLDivElement>) => {
         if (didDragRef.current) {
             return;
@@ -89,6 +89,7 @@ export const Sequencer = React.memo(function Sequencer() {
                 <div className="steps-container" ref={mediaStepsRef}>
                     {mediaSequence.map((item, index) => {
                         const isModel = !!(item?.key && userModels[item.key]);
+                        const isHtml = !!(item?.key && userHtml[item.key]);
                         return (
                             <SequencerStep
                                 key={`media-${index}`}
@@ -98,6 +99,9 @@ export const Sequencer = React.memo(function Sequencer() {
                                 videoInfo={item?.key ? userVideos[item.key] : null}
                                 imageSrc={item?.key ? (userImages[item.key] || modelPreviews[item.key]) : null}
                                 isModel={isModel}
+                                isHtml={isHtml}
+                                htmlContent={isHtml && item?.key ? userHtml[item.key] : null}
+                                htmlSettings={item?.htmlSettings}
                                 isActive={isPlaying && currentStep === index}
                                 isEditable={editableStep === index}
                                 isLive={liveVjStep === index}

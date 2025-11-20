@@ -1,4 +1,3 @@
-// FIX: Import React to make React types available in this file.
 import React from 'react';
 
 // For useWebGL hook
@@ -34,6 +33,7 @@ export interface ProgramInfo {
     u_particleAmount?: WebGLUniformLocation | null;
 
     // For Model shader
+    u_vertexNoiseAmount?: WebGLUniformLocation | null;
     u_modelMatrix?: WebGLUniformLocation | null;
     u_viewMatrix?: WebGLUniformLocation | null;
     u_projectionMatrix?: WebGLUniformLocation | null;
@@ -71,14 +71,6 @@ export type UserImage = string; // Base64 data URL
 export type UserImages = Record<string, UserImage>;
 export type UserVideo = { objectURL: string; element: HTMLVideoElement; file: File };
 export type UserVideos = Record<string, UserVideo>;
-export type UserModel = { 
-    geometry: any; // THREE.BufferGeometry
-    wireframeGeometry?: any; // THREE.WireframeGeometry
-    file: File;
-    center?: any; // THREE.Vector3
-    scale?: number;
-};
-export type UserModels = Record<string, UserModel>;
 export type UserHtml = {
     type: 'code';
     html: string;       // Always compiled HTML
@@ -93,6 +85,28 @@ export type UserHtml = {
     url: string;
 };
 export type UserHtmls = Record<string, UserHtml>;
+export type UserModel = { 
+    geometry: any; // THREE.BufferGeometry
+    wireframeGeometry?: any; // THREE.WireframeGeometry
+    file: File;
+    center?: any; // THREE.Vector3
+    scale?: number;
+};
+export type UserModels = Record<string, UserModel>;
+export type ModelSettings = {
+    modelAnimationType: string;
+    modelAnimationSpeed: number;
+    modelTransitionType: string;
+    modelZoom: number;
+    modelRotationX: number;
+    modelRotationY: number;
+    modelRotationZ: number;
+    modelWireframe: boolean;
+    modelUseShaderTexture: boolean;
+    cameraFlyAround: boolean;
+    vertexNoiseAmount: number;
+    cameraType: 'perspective' | 'exaggerated' | 'fisheye' | 'orthographic';
+};
 export type HtmlSettings = {
     htmlTransitionType: 'fade' | 'slide-in-top' | 'slide-in-bottom' | 'slide-in-left' | 'slide-in-right' | 'zoom-in' | 'zoom-out';
     transparentBackground: boolean;
@@ -114,21 +128,10 @@ export type ControlSettings = {
     speed: number;
     zoom: number;
     particles: number;
-    modelAnimationType: string;
-    modelAnimationSpeed: number;
-    modelTransitionType: string;
-    modelZoom: number;
-    modelRotationX: number;
-    modelRotationY: number;
-    modelRotationZ: number;
-    modelWireframe: boolean;
-    modelUseShaderTexture: boolean;
-    cameraFlyAround: boolean;
-    cameraRotationX: number;
-    cameraRotationY: number;
 };
 export type MediaSequenceItem = { 
     key: string | null; 
+    modelSettings?: ModelSettings;
     htmlSettings?: HtmlSettings;
 };
 
@@ -138,7 +141,7 @@ export type StagedFile = {
     name: string;
     file: File;
     previewSrc: string;
-    type: 'image' | 'video' | 'model';
+    type: 'image' | 'video' | 'model' | 'html';
 };
 
 // --- New Multi-Context State Types ---
@@ -149,8 +152,8 @@ export interface UIState {
     isAddMediaModalOpen: boolean;
     isAddHtmlModalOpen: boolean;
     isEditHtmlModalOpen: boolean;
-    isHtmlSettingsModalOpen: boolean;
     isModelSettingsModalOpen: boolean;
+    isHtmlSettingsModalOpen: boolean;
     isHelpModalOpen: boolean;
     isConfirmDeleteModalOpen: boolean;
     itemToDelete: { key: string; type: 'media' | 'shader' } | null;
@@ -163,14 +166,17 @@ export interface UIState {
     sessionLoadingDetails: string;
     isDraggingOver: boolean;
     initialFilesForModal: File[] | null;
+    isRightPanelVisible: boolean;
+    isControlsVisible: boolean;
+    isSequencerVisible: boolean;
 }
 export interface UIActions {
     setIsAddShaderModalOpen: (isOpen: boolean) => void;
     setIsAddMediaModalOpen: (isOpen: boolean) => void;
     setIsAddHtmlModalOpen: (isOpen: boolean) => void;
     setIsEditHtmlModalOpen: (isOpen: boolean) => void;
-    setIsHtmlSettingsModalOpen: (isOpen: boolean) => void;
     setIsModelSettingsModalOpen: (isOpen: boolean) => void;
+    setIsHtmlSettingsModalOpen: (isOpen: boolean) => void;
     setIsHelpModalOpen: (isOpen: boolean) => void;
     setIsConfirmDeleteModalOpen: (isOpen: boolean) => void;
     setItemToDelete: (item: { key: string; type: 'media' | 'shader' } | null) => void;
@@ -184,6 +190,9 @@ export interface UIActions {
     setSessionLoadingDetails: React.Dispatch<React.SetStateAction<string>>;
     setIsDraggingOver: React.Dispatch<React.SetStateAction<boolean>>;
     setInitialFilesForModal: React.Dispatch<React.SetStateAction<File[] | null>>;
+    setIsRightPanelVisible: React.Dispatch<React.SetStateAction<boolean>>;
+    setIsControlsVisible: React.Dispatch<React.SetStateAction<boolean>>;
+    setIsSequencerVisible: React.Dispatch<React.SetStateAction<boolean>>;
 }
 export type UIContextValue = UIState & UIActions;
 
@@ -207,6 +216,8 @@ export interface SequencerState {
         toShaderKey: string;
         fromMediaKey: string | null;
         toMediaKey: string | null;
+        fromModelSettings: ModelSettings | null;
+        toModelSettings: ModelSettings | null;
         fromHtmlSettings: HtmlSettings | null;
         toHtmlSettings: HtmlSettings | null;
         isTransitioning: boolean;
@@ -224,6 +235,8 @@ export interface SequencerActions {
     setLoopEnd: React.Dispatch<React.SetStateAction<number>>;
     setCurrentPage: React.Dispatch<React.SetStateAction<number>>;
     handleControlChange: (field: keyof ControlSettings, value: number | boolean | string) => void;
+    handleStepModelSettingsChange: (stepIndex: number, field: keyof ModelSettings, value: number | boolean | string) => void;
+    handleStepHtmlSettingsChange: (stepIndex: number, field: keyof HtmlSettings, value: number | boolean | string) => void;
     handlePageChange: (newPageIndex: number) => void;
     handleSequencerStepsChange: (newSteps: number) => void;
     handleStepClick: (index: number, type: 'media' | 'shader', event: React.MouseEvent) => void;
@@ -232,7 +245,7 @@ export interface SequencerActions {
     shiftLoop: (direction: 'left' | 'right') => void;
     advanceSequence: () => void;
     triggerLiveVjStep: (stepIndex: number) => void;
-    startTransition: (from: { shaderKey: string | null; mediaKey: string | null; htmlSettings: HtmlSettings | null; }, to: { shaderKey: string | null; mediaKey: string | null; htmlSettings: HtmlSettings | null; }) => void;
+    startTransition: (from: { shaderKey: string | null; mediaKey: string | null; modelSettings: ModelSettings | null; htmlSettings: HtmlSettings | null; }, to: { shaderKey: string | null; mediaKey: string | null; modelSettings: ModelSettings | null; htmlSettings: HtmlSettings | null; }) => void;
     setEditableStep: (step: number) => void;
     startLoopSelection: (index: number) => void;
     updateLoopSelection: (index: number) => void;
@@ -260,12 +273,15 @@ export interface LibraryActions {
     setUserVideos: React.Dispatch<React.SetStateAction<UserVideos>>;
     setUserModels: React.Dispatch<React.SetStateAction<UserModels>>;
     setUserHtml: React.Dispatch<React.SetStateAction<UserHtmls>>;
+    // FIX: Add setShaderPreviews to LibraryActions interface
+    setShaderPreviews: React.Dispatch<React.SetStateAction<Record<string, string>>>;
     deleteShader: (key: string) => void;
     deleteMedia: (key: string) => void;
     saveShader: (name: string, code: string) => void;
     saveMedia: (files: { name: string; file: File }[]) => Promise<string[]>;
     saveHtml: (name: string, data: UserHtml) => void;
     updateHtml: (name: string, content: UserHtml) => void;
+    updateMediaName: (oldKey: string, newKey: string) => Promise<boolean>;
     handlePreviewGenerated: (key: string, dataUrl: string) => void;
     handleModelPreviewGenerated: (key: string, dataUrl: string) => void;
 }

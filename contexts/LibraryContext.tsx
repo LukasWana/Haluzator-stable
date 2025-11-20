@@ -1,18 +1,27 @@
-
-
 import React, { createContext, useState, useEffect, useCallback, useMemo, useContext } from 'react';
 import * as THREE from 'three';
 import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
 import { WireframeGeometry } from 'three/addons/geometries/WireframeGeometry.js';
 import { SHADERS as SHADERS_CATEGORIZED } from '../shaders/index';
-import { fileToDataUrl, dataUrlToFile } from '../utils/helpers';
-import { USER_SHADERS_STORAGE_KEY } from '../constants';
-import type { UserShaders, UserImages, UserVideos, LibraryContextValue, UserShader, UserModels, UserModel } from '../types';
+import { fileToDataUrl } from '../utils/helpers';
+import { USER_SHADERS_STORAGE_KEY, USER_HTML_STORAGE_KEY, SHADER_PREVIEWS_CACHE_KEY } from '../constants';
+import type { UserShaders, UserImages, UserVideos, LibraryContextValue, UserShader, UserModels, UserModel, UserHtmls, UserHtml } from '../types';
 import { generateShaderPreviews } from '../utils/previewGenerator';
 import { generateModelPreview } from '../utils/modelPreviewGenerator';
 import { useUI } from './UIContext';
 
 const SHADERS = SHADERS_CATEGORIZED.sources;
+
+// Helper to create a simple hash from a string to detect changes.
+const simpleHash = (str: string) => {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = (hash << 5) - hash + char;
+    hash |= 0; // Convert to 32bit integer
+  }
+  return hash.toString();
+};
 
 export const LibraryContext = createContext<LibraryContextValue | undefined>(undefined);
 
@@ -23,6 +32,7 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const [userImages, setUserImages] = useState<UserImages>({});
     const [userVideos, setUserVideos] = useState<UserVideos>({});
     const [userModels, setUserModels] = useState<UserModels>({});
+    const [userHtml, setUserHtml] = useState<UserHtmls>({});
     const [shaderPreviews, setShaderPreviews] = useState<Record<string, string>>({});
     const [modelPreviews, setModelPreviews] = useState<Record<string, string>>({});
 
@@ -30,16 +40,39 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const shaders = useMemo(() => ({
         ...SHADERS,
         // FIX: Explicitly type map parameter to resolve error when destructuring.
-        ...Object.fromEntries(Object.entries(userShaders).map(([name, shaderDef]: [string, UserShader]) => [name, shaderDef.code]))
+        ...Object.fromEntries(Object.entries(userShaders).map(([name, shaderDef]: [string, { code: string }]) => [name, shaderDef.code]))
     }), [userShaders]);
 
     const defaultShaderKeys = useMemo(() => Object.keys(SHADERS).sort(), []);
-    const allDisplayableKeys = useMemo(() => [...Object.keys(shaders), ...Object.keys(userImages), ...Object.keys(userVideos), ...Object.keys(userModels)], [shaders, userImages, userVideos, userModels]);
+    const allDisplayableKeys = useMemo(() => [...Object.keys(shaders), ...Object.keys(userImages), ...Object.keys(userVideos), ...Object.keys(userModels), ...Object.keys(userHtml)], [shaders, userImages, userVideos, userModels, userHtml]);
 
     const handlePreviewGenerated = useCallback((key: string, dataUrl: string) => {
+        // This updates the state for the current session
         setShaderPreviews(prev => ({ ...prev, [key]: dataUrl }));
-    }, []);
 
+        // Update cache
+        try {
+            const cachedData = JSON.parse(localStorage.getItem(SHADER_PREVIEWS_CACHE_KEY) || '{}');
+            const defaultShadersHash = simpleHash(JSON.stringify(SHADERS));
+            const previews = cachedData.previews || {};
+            
+            const savedShaders = JSON.parse(localStorage.getItem(USER_SHADERS_STORAGE_KEY) || '{}');
+
+            if (SHADERS[key as keyof typeof SHADERS]) {
+                previews[key] = dataUrl;
+            } else if (savedShaders[key]) {
+                previews[key] = {
+                    hash: simpleHash(savedShaders[key].code),
+                    dataUrl: dataUrl
+                };
+            }
+            
+            localStorage.setItem(SHADER_PREVIEWS_CACHE_KEY, JSON.stringify({ version: defaultShadersHash, previews }));
+        } catch(e) {
+            console.error("Failed to update preview cache", e);
+        }
+    }, []);
+    
     const handleModelPreviewGenerated = useCallback((key: string, dataUrl: string) => {
         setModelPreviews(prev => ({ ...prev, [key]: dataUrl }));
     }, []);
@@ -50,11 +83,12 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ child
             const firstImage = Object.keys(userImages)[0];
             const firstVideo = Object.keys(userVideos)[0];
             const firstModel = Object.keys(userModels)[0];
+            const firstHtml = Object.keys(userHtml)[0];
             const firstDefaultShader = defaultShaderKeys[0];
-
-            setSelectedItem(firstUserShader || firstImage || firstVideo || firstModel || firstDefaultShader || '');
+            
+            setSelectedItem(firstUserShader || firstImage || firstVideo || firstModel || firstHtml || firstDefaultShader || '');
         }
-    }, [allDisplayableKeys, selectedItem, setSelectedItem, userShaders, userImages, userVideos, userModels, defaultShaderKeys]);
+    }, [allDisplayableKeys, selectedItem, setSelectedItem, userShaders, userImages, userVideos, userModels, userHtml, defaultShaderKeys]);
 
     const deleteShader = useCallback((key: string) => {
         setUserShaders(prevShaders => {
@@ -62,6 +96,18 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ child
                 const newShaders = { ...prevShaders };
                 delete newShaders[key];
                 localStorage.setItem(USER_SHADERS_STORAGE_KEY, JSON.stringify(newShaders));
+                
+                // Remove from preview cache
+                try {
+                    const cachedData = JSON.parse(localStorage.getItem(SHADER_PREVIEWS_CACHE_KEY) || '{}');
+                    if (cachedData.previews && cachedData.previews[key]) {
+                        delete cachedData.previews[key];
+                        localStorage.setItem(SHADER_PREVIEWS_CACHE_KEY, JSON.stringify(cachedData));
+                    }
+                } catch (e) {
+                    console.error("Failed to update preview cache on delete", e);
+                }
+
                 return newShaders;
             }
             return prevShaders;
@@ -98,9 +144,19 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ child
             }
             return prevModels;
         });
+        setUserHtml(prevHtml => {
+            if (Object.prototype.hasOwnProperty.call(prevHtml, key)) {
+                const newHtml = { ...prevHtml };
+                delete newHtml[key];
+                localStorage.setItem(USER_HTML_STORAGE_KEY, JSON.stringify(newHtml));
+                return newHtml;
+            }
+            return prevHtml;
+        });
     }, []);
 
     const saveShader = useCallback((name: string, code: string) => {
+        // The callback to generateShaderPreviews will handle caching.
         generateShaderPreviews({ [name]: code }, handlePreviewGenerated);
         setUserShaders(prev => {
             const newShaders = { ...prev, [name]: { code } };
@@ -110,12 +166,94 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ child
         setSelectedItem(name);
     }, [handlePreviewGenerated, setSelectedItem]);
 
+    const saveHtml = useCallback((name: string, data: UserHtml) => {
+        setUserHtml(prev => {
+            const newHtmls = { ...prev, [name]: data };
+            localStorage.setItem(USER_HTML_STORAGE_KEY, JSON.stringify(newHtmls));
+            return newHtmls;
+        });
+        setSelectedItem(name);
+    }, [setSelectedItem]);
+
+
+    const updateHtml = useCallback((name: string, content: UserHtml) => {
+        setUserHtml(prev => {
+            const newHtmls = { ...prev, [name]: content };
+            localStorage.setItem(USER_HTML_STORAGE_KEY, JSON.stringify(newHtmls));
+            return newHtmls;
+        });
+    }, []);
+
+    const updateMediaName = useCallback(async (oldKey: string, newKey: string): Promise<boolean> => {
+        const trimmedNewKey = newKey.trim();
+        const allKeys = [
+            ...Object.keys(userShaders),
+            ...Object.keys(userImages),
+            ...Object.keys(userVideos),
+            ...Object.keys(userModels),
+            ...Object.keys(userHtml)
+        ];
+
+        if (trimmedNewKey === '' || (trimmedNewKey !== oldKey && allKeys.includes(trimmedNewKey))) {
+            alert(`Name "${trimmedNewKey}" is invalid or already in use.`);
+            return false;
+        }
+
+        const renameInState = <T extends {}>(
+            state: T,
+            setter: React.Dispatch<React.SetStateAction<T>>,
+            storageKey?: string
+        ): boolean => {
+            if (Object.prototype.hasOwnProperty.call(state, oldKey)) {
+                const newState = { ...state };
+                const data = newState[oldKey as keyof T];
+                delete newState[oldKey as keyof T];
+                (newState as any)[trimmedNewKey] = data;
+                setter(newState);
+                if (storageKey) {
+                    localStorage.setItem(storageKey, JSON.stringify(newState));
+                }
+                return true;
+            }
+            return false;
+        };
+        
+        if (renameInState(userShaders, setUserShaders, USER_SHADERS_STORAGE_KEY)) {
+            setShaderPreviews(prev => {
+                const newPreviews = { ...prev };
+                if (newPreviews[oldKey]) {
+                    newPreviews[trimmedNewKey] = newPreviews[oldKey];
+                    delete newPreviews[oldKey];
+                }
+                return newPreviews;
+            });
+            return true;
+        }
+        if (renameInState(userImages, setUserImages)) return true;
+        if (renameInState(userVideos, setUserVideos)) return true;
+        if (renameInState(userModels, setUserModels)) {
+            setModelPreviews(prev => {
+                const newPreviews = { ...prev };
+                if (newPreviews[oldKey]) {
+                    newPreviews[trimmedNewKey] = newPreviews[oldKey];
+                    delete newPreviews[oldKey];
+                }
+                return newPreviews;
+            });
+            return true;
+        }
+        if (renameInState(userHtml, setUserHtml, USER_HTML_STORAGE_KEY)) return true;
+        
+        return false;
+    }, [userShaders, userImages, userVideos, userModels, userHtml]);
+
+
     const saveMedia = useCallback(async (files: { name: string; file: File }[]): Promise<string[]> => {
         const newMediaKeys: string[] = [];
         const imageUpdates: UserImages = {};
         const videoUpdates: UserVideos = {};
         const modelUpdates: UserModels = {};
-
+        
         for (const { name, file } of files) {
             newMediaKeys.push(name);
             if (file.type.startsWith('image/')) {
@@ -148,7 +286,7 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ child
                         const size = box.getSize(new THREE.Vector3());
                         const maxDim = Math.max(size.x, size.y, size.z);
                         const scale = maxDim > 0 ? 1.5 / maxDim : 1.0;
-
+                        
                         const wireframeGeometry = new THREE.WireframeGeometry(geometry);
 
                         modelUpdates[name] = { geometry, wireframeGeometry, file, center, scale };
@@ -166,116 +304,26 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ child
         if (Object.keys(imageUpdates).length > 0) setUserImages(prev => ({ ...prev, ...imageUpdates }));
         if (Object.keys(videoUpdates).length > 0) setUserVideos(prev => ({ ...prev, ...videoUpdates }));
         if (Object.keys(modelUpdates).length > 0) setUserModels(prev => ({...prev, ...modelUpdates}));
-
+        
         if (newMediaKeys.length > 0) setSelectedItem(newMediaKeys[newMediaKeys.length - 1]);
-
+        
         return newMediaKeys;
     }, [setSelectedItem, handleModelPreviewGenerated]);
-
+    
     useEffect(() => {
-        const savedShaders = JSON.parse(localStorage.getItem(USER_SHADERS_STORAGE_KEY) || '{}');
-        setUserShaders(savedShaders);
+        // Initial loading is now handled by SessionContext
+    }, []);
 
-        const allShaderSources = { ...SHADERS, ...Object.fromEntries(Object.entries(savedShaders).map(([k, v]: [string, any]) => [k, v.code])) };
-
-        // The preloader is now handled by App.tsx. This just kicks off the background generation.
-        generateShaderPreviews(allShaderSources, handlePreviewGenerated);
-
-    }, [handlePreviewGenerated]);
-
-    // Load default media on startup
-    useEffect(() => {
-        const loadDefaultMedia = async () => {
-            try {
-                const response = await fetch('/media/default.json');
-                if (!response.ok) {
-                    console.warn('Could not load default.json, skipping default media');
-                    return;
-                }
-                const defaultData = await response.json();
-
-                // Load images
-                if (defaultData.userImages && Object.keys(defaultData.userImages).length > 0) {
-                    setUserImages(prev => ({ ...prev, ...defaultData.userImages }));
-                }
-
-                // Load videos
-                if (defaultData.userVideos && Object.keys(defaultData.userVideos).length > 0) {
-                    const videoUpdates: UserVideos = {};
-                    for (const [name, videoData] of Object.entries(defaultData.userVideos) as [string, { dataUrl: string; fileName: string }][]) {
-                        try {
-                            const file = await dataUrlToFile(videoData.dataUrl, videoData.fileName);
-                            const objectURL = URL.createObjectURL(file);
-                            const videoElement = document.createElement('video');
-                            videoElement.src = objectURL;
-                            videoElement.muted = true;
-                            videoElement.loop = false;
-                            videoElement.playsInline = true;
-                            videoUpdates[name] = { objectURL, element: videoElement, file };
-                        } catch (e) {
-                            console.error(`Failed to load default video ${name}:`, e);
-                        }
-                    }
-                    if (Object.keys(videoUpdates).length > 0) {
-                        setUserVideos(prev => ({ ...prev, ...videoUpdates }));
-                    }
-                }
-
-                // Load models
-                if (defaultData.userModels && Object.keys(defaultData.userModels).length > 0) {
-                    const modelUpdates: UserModels = {};
-                    for (const [name, modelData] of Object.entries(defaultData.userModels) as [string, { dataUrl: string; fileName: string }][]) {
-                        try {
-                            const file = await dataUrlToFile(modelData.dataUrl, modelData.fileName);
-                            const text = await file.text();
-                            const loader = new OBJLoader();
-                            const group = loader.parse(text);
-                            let geometry;
-                            group.traverse((child: any) => {
-                                if (child.isMesh) {
-                                    geometry = child.geometry;
-                                }
-                            });
-
-                            if (geometry) {
-                                geometry.computeVertexNormals();
-                                geometry.computeBoundingBox();
-                                const box = geometry.boundingBox;
-                                const center = box.getCenter(new THREE.Vector3());
-                                const size = box.getSize(new THREE.Vector3());
-                                const maxDim = Math.max(size.x, size.y, size.z);
-                                const scale = maxDim > 0 ? 1.5 / maxDim : 1.0;
-
-                                const wireframeGeometry = new THREE.WireframeGeometry(geometry);
-                                modelUpdates[name] = { geometry, wireframeGeometry, file, center, scale };
-                                generateModelPreview(name, geometry, handleModelPreviewGenerated);
-                            } else {
-                                console.error(`Could not find a mesh in default OBJ file: ${name}`);
-                            }
-                        } catch (e) {
-                            console.error(`Failed to load default model ${name}:`, e);
-                        }
-                    }
-                    if (Object.keys(modelUpdates).length > 0) {
-                        setUserModels(prev => ({...prev, ...modelUpdates}));
-                    }
-                }
-            } catch (error) {
-                console.error('Failed to load default media:', error);
-            }
-        };
-
-        loadDefaultMedia();
-    }, [handleModelPreviewGenerated]);
-
-    const value = useMemo(() => ({
-        userShaders, userImages, userVideos, userModels, shaderPreviews, modelPreviews, shaders, defaultShaderKeys, allDisplayableKeys,
+    const value: LibraryContextValue = useMemo(() => ({
+        userShaders, userImages, userVideos, userModels, userHtml, shaderPreviews, modelPreviews, shaders, defaultShaderKeys, allDisplayableKeys,
         setUserShaders,
         setUserImages,
         setUserVideos,
         setUserModels,
-        deleteShader, deleteMedia, saveShader, saveMedia, handlePreviewGenerated, handleModelPreviewGenerated
-    }), [userShaders, userImages, userVideos, userModels, shaderPreviews, modelPreviews, shaders, defaultShaderKeys, allDisplayableKeys, deleteShader, deleteMedia, saveShader, saveMedia, handlePreviewGenerated, handleModelPreviewGenerated]);
+        setUserHtml,
+        setShaderPreviews,
+        deleteShader, deleteMedia, saveShader, saveMedia, saveHtml, updateHtml, updateMediaName, handlePreviewGenerated, handleModelPreviewGenerated
+    }), [userShaders, userImages, userVideos, userModels, userHtml, shaderPreviews, modelPreviews, shaders, defaultShaderKeys, allDisplayableKeys, deleteShader, deleteMedia, saveShader, saveMedia, saveHtml, updateHtml, updateMediaName, handlePreviewGenerated, handleModelPreviewGenerated]);
 
     return <LibraryContext.Provider value={value}>{children}</LibraryContext.Provider>;
 };

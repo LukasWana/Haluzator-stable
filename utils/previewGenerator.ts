@@ -1,6 +1,3 @@
-
-
-
 import { getFragmentShaderSrc } from '../gl/glUtils';
 import { VERTEX_SHADER_SRC } from '../gl/shaders';
 
@@ -49,7 +46,6 @@ const createProgram = (gl: WebGLRenderingContext, vsSrc: string, fsSrc: string):
 export const generateShaderPreviews = (
     shaders: Record<string, string>,
     onPreviewGenerated: (key: string, dataUrl: string) => void,
-    // FIX: Added optional onProgress callback to support progress reporting.
     onProgress?: (key: string, current: number, total: number) => void
 ): Promise<void> => {
     return new Promise((resolve) => {

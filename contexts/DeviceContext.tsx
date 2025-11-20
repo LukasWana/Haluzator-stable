@@ -18,8 +18,9 @@ export const DeviceProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const audioLoopRef = useRef<number | null>(null);
     
     const originalCanvasParentRef = useRef<HTMLElement | null>(null);
+    const originalOverlayParentRef = useRef<HTMLElement | null>(null);
     const canvasRefForProjection = useRef<HTMLCanvasElement | null>(null);
-
+    const overlayRefForProjection = useRef<HTMLDivElement | null>(null);
 
     const toggleAudio = useCallback(async () => {
         if (audioContextRef.current?.state === 'running') {
@@ -55,22 +56,51 @@ export const DeviceProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         } catch (err) { console.error('Error accessing microphone:', err); setAudioState('error'); }
     }, []);
 
-    const handleProjectionToggle = useCallback((canvasElement: HTMLCanvasElement | null, wrapperElement: HTMLDivElement | null) => {
+    const handleProjectionToggle = useCallback((canvasElement: HTMLCanvasElement | null, wrapperElement: HTMLDivElement | null, htmlOverlayElement: HTMLDivElement | null) => {
         if (projectionWindow) {
             projectionWindow.close();
         } else {
-            if (!canvasElement || !wrapperElement) return;
+            if (!canvasElement || !wrapperElement || !htmlOverlayElement) return;
             setIsProjectingTransition(true);
             const newWindow = window.open('', '_blank', 'width=800,height=600,menubar=no,toolbar=no,location=no,status=no');
             if (newWindow) {
                 newWindow.document.title = "Shader Projection";
                 newWindow.document.body.style.cssText = 'margin:0;overflow:hidden;background-color:black;';
+
+                // Copy all stylesheets from the main document to the new window
+                Array.from(document.styleSheets).forEach(styleSheet => {
+                    try {
+                        // If we can access the rules, create a <style> tag with the content
+                        const cssRules = Array.from(styleSheet.cssRules).map(rule => rule.cssText).join(' ');
+                        const styleElement = newWindow.document.createElement('style');
+                        styleElement.textContent = cssRules;
+                        newWindow.document.head.appendChild(styleElement);
+                    } catch (e) {
+                        // If we can't access cssRules (e.g., for cross-origin stylesheets), create a <link> tag
+                        if (styleSheet.href) {
+                            const linkElement = newWindow.document.createElement('link');
+                            linkElement.rel = 'stylesheet';
+                            linkElement.href = styleSheet.href;
+                            newWindow.document.head.appendChild(linkElement);
+                        }
+                    }
+                });
+                
                 originalCanvasParentRef.current = wrapperElement;
+                originalOverlayParentRef.current = htmlOverlayElement.parentElement;
+
                 canvasRefForProjection.current = canvasElement;
+                overlayRefForProjection.current = htmlOverlayElement;
+
                 newWindow.document.body.appendChild(canvasElement);
+                newWindow.document.body.appendChild(htmlOverlayElement);
+                
                 newWindow.onbeforeunload = () => {
                     if (originalCanvasParentRef.current && canvasRefForProjection.current) {
-                        originalCanvasParentRef.current.appendChild(canvasRefForProjection.current);
+                        originalCanvasParentRef.current.prepend(canvasRefForProjection.current);
+                    }
+                    if (originalOverlayParentRef.current && overlayRefForProjection.current) {
+                        originalOverlayParentRef.current.appendChild(overlayRefForProjection.current);
                     }
                     setProjectionWindow(null);
                 };

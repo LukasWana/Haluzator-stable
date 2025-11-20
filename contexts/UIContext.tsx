@@ -6,7 +6,10 @@ export const UIContext = createContext<UIContextValue | undefined>(undefined);
 export const UIProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [isAddShaderModalOpen, setIsAddShaderModalOpen] = useState(false);
     const [isAddMediaModalOpen, setIsAddMediaModalOpen] = useState(false);
+    const [isAddHtmlModalOpen, setIsAddHtmlModalOpen] = useState(false);
+    const [isEditHtmlModalOpen, setIsEditHtmlModalOpen] = useState(false);
     const [isModelSettingsModalOpen, setIsModelSettingsModalOpen] = useState(false);
+    const [isHtmlSettingsModalOpen, setIsHtmlSettingsModalOpen] = useState(false);
     const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
     const [isConfirmDeleteModalOpen, setIsConfirmDeleteModalOpen] = useState(false);
     const [itemToDelete, setItemToDelete] = useState<{ key: string; type: 'media' | 'shader' } | null>(null);
@@ -19,6 +22,9 @@ export const UIProvider: React.FC<{ children: React.ReactNode }> = ({ children }
     const [sessionLoadingDetails, setSessionLoadingDetails] = useState('');
     const [isDraggingOver, setIsDraggingOver] = useState(false);
     const [initialFilesForModal, setInitialFilesForModal] = useState<File[] | null>(null);
+    const [isRightPanelVisible, setIsRightPanelVisible] = useState(true);
+    const [isControlsVisible, setIsControlsVisible] = useState(true);
+    const [isSequencerVisible, setIsSequencerVisible] = useState(true);
 
 
     const handleShaderError = useCallback((key: string, message: string | null) => {
@@ -54,7 +60,10 @@ export const UIProvider: React.FC<{ children: React.ReactNode }> = ({ children }
     const value = useMemo(() => ({
         isAddShaderModalOpen,
         isAddMediaModalOpen,
+        isAddHtmlModalOpen,
+        isEditHtmlModalOpen,
         isModelSettingsModalOpen,
+        isHtmlSettingsModalOpen,
         isHelpModalOpen,
         isConfirmDeleteModalOpen,
         itemToDelete,
@@ -67,9 +76,15 @@ export const UIProvider: React.FC<{ children: React.ReactNode }> = ({ children }
         sessionLoadingDetails,
         isDraggingOver,
         initialFilesForModal,
+        isRightPanelVisible,
+        isControlsVisible,
+        isSequencerVisible,
         setIsAddShaderModalOpen,
         setIsAddMediaModalOpen,
+        setIsAddHtmlModalOpen,
+        setIsEditHtmlModalOpen,
         setIsModelSettingsModalOpen,
+        setIsHtmlSettingsModalOpen,
         setIsHelpModalOpen,
         setIsConfirmDeleteModalOpen,
         setItemToDelete,
@@ -83,11 +98,15 @@ export const UIProvider: React.FC<{ children: React.ReactNode }> = ({ children }
         setSessionLoadingDetails,
         setIsDraggingOver,
         setInitialFilesForModal,
+        setIsRightPanelVisible,
+        setIsControlsVisible,
+        setIsSequencerVisible,
     }), [
-        isAddShaderModalOpen, isAddMediaModalOpen, isModelSettingsModalOpen, isHelpModalOpen,
+        isAddShaderModalOpen, isAddMediaModalOpen, isAddHtmlModalOpen, isEditHtmlModalOpen, isModelSettingsModalOpen, isHtmlSettingsModalOpen, isHelpModalOpen,
         isConfirmDeleteModalOpen, itemToDelete,
         isProjectingTransition, shaderErrors, fpsDisplay, selectedItem, isFullscreen,
         isSessionLoading, sessionLoadingDetails, isDraggingOver, initialFilesForModal,
+        isRightPanelVisible, isControlsVisible, isSequencerVisible,
         handleShaderError, handleFpsUpdate, handleFullscreenToggle
     ]);
 

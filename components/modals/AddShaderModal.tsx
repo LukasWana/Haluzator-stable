@@ -46,8 +46,9 @@ void main()
 }`;
 
     return (
-        <div className="modal-overlay" onClick={handleClose}>
+        <div className="modal-overlay">
             <div className="modal-content" onClick={e => e.stopPropagation()}>
+                <button className="modal-close-button" onClick={handleClose} aria-label="Close">&times;</button>
                 <h2>Add Custom Shader</h2>
                 {error && <p className="modal-error">{error}</p>}
                 <div className="modal-form-group">

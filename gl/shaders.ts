@@ -30,16 +30,32 @@ export const MODEL_VERTEX_SHADER_SRC = `
   uniform mat4 u_modelMatrix;
   uniform mat4 u_viewMatrix;
   uniform mat4 u_projectionMatrix;
+  uniform float u_vertexNoiseAmount;
+  uniform float iTime_app;
 
   varying vec3 v_normal;
   varying vec3 v_worldPosition;
 
+  // Simple hash-based noise
+  float hash(vec3 p) {
+    p = fract(p * vec3(123.34, 345.45, 234.67));
+    p += dot(p, p + 34.345);
+    return fract(p.x * p.y * p.z);
+  }
+
   void main() {
+    vec3 displacedPosition = a_position;
+    if (u_vertexNoiseAmount > 0.0) {
+        // Use iTime_app so it's not affected by the speed slider
+        float noiseVal = hash(a_position * 5.0 + iTime_app * 2.0) - 0.5; // range [-0.5, 0.5]
+        displacedPosition += a_normal * noiseVal * u_vertexNoiseAmount * 0.2;
+    }
+
     mat4 modelViewMatrix = u_viewMatrix * u_modelMatrix;
-    gl_Position = u_projectionMatrix * modelViewMatrix * vec4(a_position, 1.0);
+    gl_Position = u_projectionMatrix * modelViewMatrix * vec4(displacedPosition, 1.0);
     
     v_normal = mat3(u_modelMatrix) * a_normal;
-    v_worldPosition = (u_modelMatrix * vec4(a_position, 1.0)).xyz;
+    v_worldPosition = (u_modelMatrix * vec4(displacedPosition, 1.0)).xyz;
   }
 `;
 
