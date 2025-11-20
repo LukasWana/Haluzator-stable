@@ -5,7 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="Shader Sequencer - Real-time visual effects sequencer with WebGL shaders, audio reactivity, and HTML overlays" />
     <meta name="keywords" content="shader, sequencer, webgl, visual effects, audio reactive" />
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://aistudiocdn.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src 'self' https://fonts.googleapis.com; frame-src 'self' data: blob:;">
+    <!-- CSP is relaxed for Electron - file:// protocol is needed for local resources -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' file:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://aistudiocdn.com file:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com file:; font-src 'self' https://fonts.gstatic.com data: file:; img-src 'self' data: blob: file:; connect-src 'self' https://fonts.googleapis.com file:; frame-src 'self' data: blob: file:;">
     <title>Shader Sequencer</title>
     <link rel="stylesheet" href="index.css" />
     <link rel="preconnect" href="https://fonts.googleapis.com">

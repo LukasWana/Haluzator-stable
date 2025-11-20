@@ -3,6 +3,8 @@ import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import removeConsole from 'vite-plugin-remove-console';
 
+const isElectron = process.env.ELECTRON === 'true';
+
 export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, '.', '');
     const isProduction = mode === 'production';
@@ -32,13 +34,15 @@ export default defineConfig(({ mode }) => {
         // In production, these should be undefined to prevent exposure
         'process.env.API_KEY': isProduction ? JSON.stringify(undefined) : JSON.stringify(env.GEMINI_API_KEY || ''),
         'process.env.GEMINI_API_KEY': isProduction ? JSON.stringify(undefined) : JSON.stringify(env.GEMINI_API_KEY || ''),
-        'process.env.NODE_ENV': JSON.stringify(mode)
+        'process.env.NODE_ENV': JSON.stringify(mode),
+        'process.env.ELECTRON': JSON.stringify(isElectron),
       },
       resolve: {
         alias: {
           '@': path.resolve(__dirname, '.'),
         }
       },
+      base: isElectron ? './' : '/',
       build: {
         // Enable minification
         minify: 'esbuild',
@@ -59,6 +63,8 @@ export default defineConfig(({ mode }) => {
         chunkSizeWarningLimit: 1000,
         // Optimize asset handling
         assetsInlineLimit: 4096,
+        // For Electron, ensure proper paths
+        outDir: 'dist',
       },
     };
 });

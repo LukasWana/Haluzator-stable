@@ -14,6 +14,7 @@ import { useLibrary } from './LibraryContext';
 import { useSequencer } from './SequencerAndPlaybackProvider';
 import { SHADERS as SHADERS_CATEGORIZED } from '../shaders/index';
 import { useToast } from '../components/Toast';
+import { getMediaPath } from '../utils/electronUtils';
 
 const SHADERS = SHADERS_CATEGORIZED.sources;
 
@@ -293,9 +294,10 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
             setIsSessionLoading(true);
             try {
                 setSessionLoadingDetails('Loading default session...');
-                const response = await fetch('media/001.json');
+                const mediaPath = getMediaPath('001.json');
+                const response = await fetch(mediaPath);
                 if (!response.ok) {
-                    throw new Error('Failed to fetch default session file media/001.json. Please ensure it exists.');
+                    throw new Error(`Failed to fetch default session file ${mediaPath}. Please ensure it exists.`);
                 }
                 const sessionData = await response.json();
                 await loadSessionData(sessionData);

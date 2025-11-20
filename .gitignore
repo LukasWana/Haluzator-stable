@@ -14,6 +14,16 @@ dist-ssr
 .env.local
 .env*.local
 
+# Electron build outputs
+release/
+build/
+*.exe
+*.dmg
+*.AppImage
+*.deb
+*.rpm
+*.snap
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
