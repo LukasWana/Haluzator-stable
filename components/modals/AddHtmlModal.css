@@ -1,0 +1,32 @@
+.type-selector {
+    display: flex;
+    border: 1px solid var(--border-color);
+    border-radius: 0;
+    overflow: hidden;
+}
+
+.type-selector button {
+    flex: 1;
+    background-color: var(--background-color);
+    color: var(--secondary-color);
+    border: none;
+    padding: 0.6rem;
+    cursor: pointer;
+    transition: background-color 0.2s, color 0.2s;
+}
+
+.type-selector button:first-child {
+    border-right: 1px solid var(--border-color);
+}
+
+.type-selector button.active {
+    background-color: var(--active-color);
+    color: var(--primary-color);
+}
+
+.url-warning {
+    font-size: 0.8rem;
+    color: var(--secondary-color);
+    margin-top: 0.5rem;
+    font-style: italic;
+}

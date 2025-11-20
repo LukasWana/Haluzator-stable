@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Shader Sequencer - Real-time visual effects sequencer with WebGL shaders, audio reactivity, and HTML overlays" />
+    <meta name="keywords" content="shader, sequencer, webgl, visual effects, audio reactive" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://aistudiocdn.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src 'self' https://fonts.googleapis.com; frame-src 'self' data: blob:;">
+    <title>Shader Sequencer</title>
+    <link rel="stylesheet" href="index.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+  <script type="importmap">
+{
+  "imports": {
+    "react": "https://aistudiocdn.com/react@^19.1.1",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.1.1/",
+    "react/": "https://aistudiocdn.com/react@^19.1.1/",
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.20.0",
+    "three": "https://aistudiocdn.com/three@^0.166.1/build/three.module.js",
+    "three/addons/": "https://aistudiocdn.com/three@^0.166.1/examples/jsm/",
+    "three/": "https://aistudiocdn.com/three@^0.180.0/",
+    "monaco-editor": "https://aistudiocdn.com/monaco-editor@^0.54.0"
+  }
+}
+</script>
+    <script src="https://cdn.jsdelivr.net/npm/webmidi@latest/dist/iife/webmidi.iife.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.49.0/min/vs/loader.js"></script>
+<link rel="stylesheet" href="/index.css">
+</head>
+  <body>
+    <div id="preloader">
+      <div class="spinner"></div>
+      <div id="preloader-info">
+        <p id="preloader-status">LOADING APPLICATION</p>
+        <p id="preloader-details">Please wait...</p>
+      </div>
+    </div>
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+</body>
+</html>

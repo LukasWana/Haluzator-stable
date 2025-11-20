@@ -1,0 +1,125 @@
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background-color: var(--surface-color);
+  padding: 1.5rem;
+  border-radius: 0;
+  width: 90%;
+  max-width: 600px;
+  border: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  max-height: 90vh;
+  overflow-y: auto;
+  position: relative;
+}
+
+.modal-content h2 {
+  margin: 0;
+  padding-right: 3rem; /* Make space for close button */
+}
+
+.modal-error {
+  color: var(--error-color);
+  background-color: rgba(255, 107, 107, 0.1);
+  padding: 0.75rem;
+  border-radius: 0;
+  font-size: 0.85rem;
+  white-space: pre-wrap;
+  text-align: left;
+  font-family: monospace;
+  max-height: 250px;
+  overflow-y: auto;
+  border: 1px solid var(--error-color);
+}
+
+.modal-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.modal-form-group label {
+  font-weight: 500;
+  color: var(--secondary-color);
+}
+
+.modal-content input[type="text"], 
+.modal-content textarea, 
+.modal-content input[type="file"] {
+  background-color: var(--background-color);
+  border: 1px solid var(--border-color);
+  border-radius: 0;
+  padding: 0.6rem;
+  color: var(--on-background-color);
+  font-family: var(--font-family);
+  font-size: 0.9rem;
+}
+
+.modal-content textarea {
+  resize: vertical;
+  font-family: monospace;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  align-items: center;
+  margin-top: 1rem;
+}
+
+.modal-actions button {
+  padding: 0.6rem 1.2rem;
+  border-radius: 0;
+  font-weight: bold;
+}
+
+.modal-button-cancel {
+  background-color: var(--primary-variant-color);
+  color: var(--on-surface-color);
+}
+
+.modal-button-save {
+  background-color: var(--active-color);
+  color: var(--primary-color);
+}
+
+.modal-button-danger {
+  background-color: var(--error-color);
+  color: var(--primary-color);
+}
+.modal-button-danger:hover {
+    background-color: #ff8c8c;
+}
+
+.modal-close-button {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  font-size: 2rem;
+  line-height: 1;
+  background: none;
+  border: none;
+  color: var(--secondary-color);
+  cursor: pointer;
+  padding: 0.5rem;
+  transition: color 0.2s ease;
+  z-index: 10;
+}
+
+.modal-close-button:hover {
+  color: var(--primary-color);
+}

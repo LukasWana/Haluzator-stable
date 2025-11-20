@@ -1,0 +1,35 @@
+{
+  "name": "haluzator---stable-version",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest --coverage"
+  },
+  "dependencies": {
+    "@google/genai": "^1.20.0",
+    "@types/dompurify": "^3.0.5",
+    "dompurify": "^3.3.0",
+    "monaco-editor": "^0.53.0",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "three": "^0.180.0"
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.0",
+    "@types/node": "^22.14.0",
+    "@types/react": "^19.2.6",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.1.1",
+    "typescript": "~5.8.2",
+    "vite": "^6.2.0",
+    "vite-plugin-remove-console": "^2.2.0",
+    "vitest": "^4.0.12"
+  }
+}

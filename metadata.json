@@ -1,0 +1,7 @@
+{
+  "name": "Haluzator - stable version",
+  "description": "play realtime animation",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}

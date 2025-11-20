@@ -1,0 +1,93 @@
+.error-boundary {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 2rem;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    color: #fff;
+}
+
+.error-boundary-content {
+    max-width: 600px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 2rem;
+    text-align: center;
+}
+
+.error-boundary-content h2 {
+    margin: 0 0 1rem 0;
+    color: #ff6b6b;
+    font-size: 1.5rem;
+}
+
+.error-boundary-content p {
+    margin: 0 0 1.5rem 0;
+    color: #ccc;
+}
+
+.error-details {
+    margin: 1.5rem 0;
+    text-align: left;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 4px;
+    padding: 1rem;
+}
+
+.error-details summary {
+    cursor: pointer;
+    color: #4dabf7;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+}
+
+.error-details summary:hover {
+    color: #74c0fc;
+}
+
+.error-message,
+.error-stack {
+    margin: 0.5rem 0;
+    padding: 0.75rem;
+    background: rgba(0, 0, 0, 0.5);
+    border-radius: 4px;
+    font-size: 0.875rem;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    word-break: break-all;
+    color: #ffd43b;
+}
+
+.error-stack {
+    color: #ff8787;
+    font-size: 0.75rem;
+}
+
+.error-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    margin-top: 1.5rem;
+}
+
+.error-button {
+    padding: 0.75rem 1.5rem;
+    background: #4dabf7;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.error-button:hover {
+    background: #74c0fc;
+}
+
+.error-button:active {
+    transform: scale(0.98);
+}
+
