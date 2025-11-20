@@ -24,6 +24,7 @@ const createWindow = () => {
     },
     icon: iconPath,
     show: false,
+    autoHideMenuBar: true, // Schová horní systémové menu
   });
 
   // Load the app
