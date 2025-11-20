@@ -79,6 +79,25 @@ export type UserModel = {
     scale?: number;
 };
 export type UserModels = Record<string, UserModel>;
+export type UserHtml = {
+    type: 'code';
+    html: string;       // Always compiled HTML
+    css: string;        // Always compiled CSS
+    js: string;
+    sourceHtml?: string; // Raw source (HTML or Pug)
+    sourceCss?: string;  // Raw source (CSS or Stylus)
+    htmlLang?: 'html' | 'pug';
+    cssLang?: 'css' | 'stylus';
+} | {
+    type: 'url';
+    url: string;
+};
+export type UserHtmls = Record<string, UserHtml>;
+export type HtmlSettings = {
+    htmlTransitionType: 'fade' | 'slide-in-top' | 'slide-in-bottom' | 'slide-in-left' | 'slide-in-right' | 'zoom-in' | 'zoom-out';
+    transparentBackground: boolean;
+    backgroundColor: string;
+};
 export type ControlSettings = {
     stepsPerMinute: number;
     audioInfluence: number;
@@ -108,7 +127,10 @@ export type ControlSettings = {
     cameraRotationX: number;
     cameraRotationY: number;
 };
-export type MediaSequenceItem = { key: string | null; };
+export type MediaSequenceItem = { 
+    key: string | null; 
+    htmlSettings?: HtmlSettings;
+};
 
 // For AddMediaModal
 export type StagedFile = {
@@ -125,6 +147,9 @@ export type StagedFile = {
 export interface UIState {
     isAddShaderModalOpen: boolean;
     isAddMediaModalOpen: boolean;
+    isAddHtmlModalOpen: boolean;
+    isEditHtmlModalOpen: boolean;
+    isHtmlSettingsModalOpen: boolean;
     isModelSettingsModalOpen: boolean;
     isHelpModalOpen: boolean;
     isConfirmDeleteModalOpen: boolean;
@@ -142,6 +167,9 @@ export interface UIState {
 export interface UIActions {
     setIsAddShaderModalOpen: (isOpen: boolean) => void;
     setIsAddMediaModalOpen: (isOpen: boolean) => void;
+    setIsAddHtmlModalOpen: (isOpen: boolean) => void;
+    setIsEditHtmlModalOpen: (isOpen: boolean) => void;
+    setIsHtmlSettingsModalOpen: (isOpen: boolean) => void;
     setIsModelSettingsModalOpen: (isOpen: boolean) => void;
     setIsHelpModalOpen: (isOpen: boolean) => void;
     setIsConfirmDeleteModalOpen: (isOpen: boolean) => void;
@@ -179,6 +207,8 @@ export interface SequencerState {
         toShaderKey: string;
         fromMediaKey: string | null;
         toMediaKey: string | null;
+        fromHtmlSettings: HtmlSettings | null;
+        toHtmlSettings: HtmlSettings | null;
         isTransitioning: boolean;
         transitionProgress: number;
     };
@@ -202,7 +232,7 @@ export interface SequencerActions {
     shiftLoop: (direction: 'left' | 'right') => void;
     advanceSequence: () => void;
     triggerLiveVjStep: (stepIndex: number) => void;
-    startTransition: (from: { shaderKey: string | null; mediaKey: string | null; }, to: { shaderKey: string | null; mediaKey: string | null; }) => void;
+    startTransition: (from: { shaderKey: string | null; mediaKey: string | null; htmlSettings: HtmlSettings | null; }, to: { shaderKey: string | null; mediaKey: string | null; htmlSettings: HtmlSettings | null; }) => void;
     setEditableStep: (step: number) => void;
     startLoopSelection: (index: number) => void;
     updateLoopSelection: (index: number) => void;
@@ -217,6 +247,7 @@ export interface LibraryState {
     userImages: UserImages;
     userVideos: UserVideos;
     userModels: UserModels;
+    userHtml: UserHtmls;
     shaderPreviews: Record<string, string>;
     modelPreviews: Record<string, string>;
     shaders: Record<string, string>;
@@ -228,10 +259,13 @@ export interface LibraryActions {
     setUserImages: React.Dispatch<React.SetStateAction<UserImages>>;
     setUserVideos: React.Dispatch<React.SetStateAction<UserVideos>>;
     setUserModels: React.Dispatch<React.SetStateAction<UserModels>>;
+    setUserHtml: React.Dispatch<React.SetStateAction<UserHtmls>>;
     deleteShader: (key: string) => void;
     deleteMedia: (key: string) => void;
     saveShader: (name: string, code: string) => void;
     saveMedia: (files: { name: string; file: File }[]) => Promise<string[]>;
+    saveHtml: (name: string, data: UserHtml) => void;
+    updateHtml: (name: string, content: UserHtml) => void;
     handlePreviewGenerated: (key: string, dataUrl: string) => void;
     handleModelPreviewGenerated: (key: string, dataUrl: string) => void;
 }
@@ -249,7 +283,7 @@ export interface DeviceActions {
     setMidiInputs: (inputs: any[]) => void;
     setSelectedMidiInputId: (id: string) => void;
     toggleAudio: () => void;
-    handleProjectionToggle: (canvasElement: HTMLCanvasElement | null, wrapperElement: HTMLDivElement | null) => void;
+    handleProjectionToggle: (canvasElement: HTMLCanvasElement | null, wrapperElement: HTMLDivElement | null, htmlOverlayElement: HTMLDivElement | null) => void;
 }
 export type DeviceContextValue = DeviceState & DeviceActions;
 

@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
 import { WireframeGeometry } from 'three/addons/geometries/WireframeGeometry.js';
 import { SHADERS as SHADERS_CATEGORIZED } from '../shaders/index';
-import { fileToDataUrl } from '../utils/helpers';
+import { fileToDataUrl, dataUrlToFile } from '../utils/helpers';
 import { USER_SHADERS_STORAGE_KEY } from '../constants';
 import type { UserShaders, UserImages, UserVideos, LibraryContextValue, UserShader, UserModels, UserModel } from '../types';
 import { generateShaderPreviews } from '../utils/previewGenerator';
@@ -39,7 +39,7 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const handlePreviewGenerated = useCallback((key: string, dataUrl: string) => {
         setShaderPreviews(prev => ({ ...prev, [key]: dataUrl }));
     }, []);
-    
+
     const handleModelPreviewGenerated = useCallback((key: string, dataUrl: string) => {
         setModelPreviews(prev => ({ ...prev, [key]: dataUrl }));
     }, []);
@@ -51,7 +51,7 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ child
             const firstVideo = Object.keys(userVideos)[0];
             const firstModel = Object.keys(userModels)[0];
             const firstDefaultShader = defaultShaderKeys[0];
-            
+
             setSelectedItem(firstUserShader || firstImage || firstVideo || firstModel || firstDefaultShader || '');
         }
     }, [allDisplayableKeys, selectedItem, setSelectedItem, userShaders, userImages, userVideos, userModels, defaultShaderKeys]);
@@ -115,7 +115,7 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ child
         const imageUpdates: UserImages = {};
         const videoUpdates: UserVideos = {};
         const modelUpdates: UserModels = {};
-        
+
         for (const { name, file } of files) {
             newMediaKeys.push(name);
             if (file.type.startsWith('image/')) {
@@ -148,7 +148,7 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ child
                         const size = box.getSize(new THREE.Vector3());
                         const maxDim = Math.max(size.x, size.y, size.z);
                         const scale = maxDim > 0 ? 1.5 / maxDim : 1.0;
-                        
+
                         const wireframeGeometry = new THREE.WireframeGeometry(geometry);
 
                         modelUpdates[name] = { geometry, wireframeGeometry, file, center, scale };
@@ -166,22 +166,107 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ child
         if (Object.keys(imageUpdates).length > 0) setUserImages(prev => ({ ...prev, ...imageUpdates }));
         if (Object.keys(videoUpdates).length > 0) setUserVideos(prev => ({ ...prev, ...videoUpdates }));
         if (Object.keys(modelUpdates).length > 0) setUserModels(prev => ({...prev, ...modelUpdates}));
-        
+
         if (newMediaKeys.length > 0) setSelectedItem(newMediaKeys[newMediaKeys.length - 1]);
-        
+
         return newMediaKeys;
     }, [setSelectedItem, handleModelPreviewGenerated]);
-    
+
     useEffect(() => {
         const savedShaders = JSON.parse(localStorage.getItem(USER_SHADERS_STORAGE_KEY) || '{}');
         setUserShaders(savedShaders);
-        
+
         const allShaderSources = { ...SHADERS, ...Object.fromEntries(Object.entries(savedShaders).map(([k, v]: [string, any]) => [k, v.code])) };
-        
+
         // The preloader is now handled by App.tsx. This just kicks off the background generation.
         generateShaderPreviews(allShaderSources, handlePreviewGenerated);
 
     }, [handlePreviewGenerated]);
+
+    // Load default media on startup
+    useEffect(() => {
+        const loadDefaultMedia = async () => {
+            try {
+                const response = await fetch('/media/default.json');
+                if (!response.ok) {
+                    console.warn('Could not load default.json, skipping default media');
+                    return;
+                }
+                const defaultData = await response.json();
+
+                // Load images
+                if (defaultData.userImages && Object.keys(defaultData.userImages).length > 0) {
+                    setUserImages(prev => ({ ...prev, ...defaultData.userImages }));
+                }
+
+                // Load videos
+                if (defaultData.userVideos && Object.keys(defaultData.userVideos).length > 0) {
+                    const videoUpdates: UserVideos = {};
+                    for (const [name, videoData] of Object.entries(defaultData.userVideos) as [string, { dataUrl: string; fileName: string }][]) {
+                        try {
+                            const file = await dataUrlToFile(videoData.dataUrl, videoData.fileName);
+                            const objectURL = URL.createObjectURL(file);
+                            const videoElement = document.createElement('video');
+                            videoElement.src = objectURL;
+                            videoElement.muted = true;
+                            videoElement.loop = false;
+                            videoElement.playsInline = true;
+                            videoUpdates[name] = { objectURL, element: videoElement, file };
+                        } catch (e) {
+                            console.error(`Failed to load default video ${name}:`, e);
+                        }
+                    }
+                    if (Object.keys(videoUpdates).length > 0) {
+                        setUserVideos(prev => ({ ...prev, ...videoUpdates }));
+                    }
+                }
+
+                // Load models
+                if (defaultData.userModels && Object.keys(defaultData.userModels).length > 0) {
+                    const modelUpdates: UserModels = {};
+                    for (const [name, modelData] of Object.entries(defaultData.userModels) as [string, { dataUrl: string; fileName: string }][]) {
+                        try {
+                            const file = await dataUrlToFile(modelData.dataUrl, modelData.fileName);
+                            const text = await file.text();
+                            const loader = new OBJLoader();
+                            const group = loader.parse(text);
+                            let geometry;
+                            group.traverse((child: any) => {
+                                if (child.isMesh) {
+                                    geometry = child.geometry;
+                                }
+                            });
+
+                            if (geometry) {
+                                geometry.computeVertexNormals();
+                                geometry.computeBoundingBox();
+                                const box = geometry.boundingBox;
+                                const center = box.getCenter(new THREE.Vector3());
+                                const size = box.getSize(new THREE.Vector3());
+                                const maxDim = Math.max(size.x, size.y, size.z);
+                                const scale = maxDim > 0 ? 1.5 / maxDim : 1.0;
+
+                                const wireframeGeometry = new THREE.WireframeGeometry(geometry);
+                                modelUpdates[name] = { geometry, wireframeGeometry, file, center, scale };
+                                generateModelPreview(name, geometry, handleModelPreviewGenerated);
+                            } else {
+                                console.error(`Could not find a mesh in default OBJ file: ${name}`);
+                            }
+                        } catch (e) {
+                            console.error(`Failed to load default model ${name}:`, e);
+                        }
+                    }
+                    if (Object.keys(modelUpdates).length > 0) {
+                        setUserModels(prev => ({...prev, ...modelUpdates}));
+                    }
+                }
+            } catch (error) {
+                console.error('Failed to load default media:', error);
+            }
+        };
+
+        loadDefaultMedia();
+    }, [handleModelPreviewGenerated]);
 
     const value = useMemo(() => ({
         userShaders, userImages, userVideos, userModels, shaderPreviews, modelPreviews, shaders, defaultShaderKeys, allDisplayableKeys,

@@ -1,4 +1,4 @@
-import type { ControlSettings } from './types';
+import type { ControlSettings, HtmlSettings } from './types';
 
 export const MAX_SEQUENCER_STEPS = 32;
 export const DEFAULT_SEQUENCER_STEPS = 8;
@@ -10,6 +10,7 @@ export const initialShaderSequence = Array(MAX_SEQUENCER_STEPS).fill(null);
 
 export const APP_STATE_STORAGE_KEY = 'shaderSequencerAppState';
 export const USER_SHADERS_STORAGE_KEY = 'userCustomShaders';
+export const USER_HTML_STORAGE_KEY = 'userUploadedHtml';
 export const USER_IMAGES_STORAGE_KEY = 'userUploadedImages';
 export const STATE_VERSION = 9;
 export const SESSION_FILE_VERSION = 16;
@@ -42,4 +43,10 @@ export const defaultControls: ControlSettings = {
     cameraFlyAround: false,
     cameraRotationX: 0,
     cameraRotationY: 0,
+};
+
+export const defaultHtmlSettings: HtmlSettings = {
+    htmlTransitionType: 'fade',
+    transparentBackground: true,
+    backgroundColor: '#000000',
 };
