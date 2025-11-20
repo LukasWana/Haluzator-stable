@@ -27,9 +27,7 @@ Real-time visual effects sequencer with WebGL shaders, audio reactivity, and HTM
    npm install
    ```
 
-2. (Optional) Set the `GEMINI_API_KEY` in `.env.local` to your Gemini API key
-
-3. Run the app:
+2. Run the app:
    ```bash
    npm run dev
    ```
