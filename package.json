@@ -1,7 +1,9 @@
 {
   "name": "haluzator",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
+  "description": "play realtime animation",
+  "author": "Your Name",
   "type": "module",
   "main": "dist-electron/main.js",
   "scripts": {
@@ -10,6 +12,7 @@
     "build": "vite build && node build-electron.js && electron-builder",
     "build:win": "vite build && node build-electron.js && electron-builder --win",
     "build:win:portable": "node clean-release.js && node copy-media.js && vite build && node build-electron.js && electron-builder --config electron-builder-portable.json --win",
+    "build:win:store": "node clean-release.js && node copy-media.js && vite build && node build-electron.js && electron-builder --config electron-builder-store.json --win",
     "build:win:dir": "vite build && node build-electron.js && electron-builder --win dir",
     "build:mac": "vite build && node build-electron.js && electron-builder --mac",
     "build:linux": "vite build && node build-electron.js && electron-builder --linux",

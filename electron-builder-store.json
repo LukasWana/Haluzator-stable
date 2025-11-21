@@ -1,0 +1,35 @@
+{
+  "appId": "com.haluzator.app",
+  "productName": "Haluzator",
+  "directories": {
+    "output": "release"
+  },
+  "files": [
+    "dist/**/*",
+    "dist-electron/**/*",
+    "media/**/*",
+    "assets/**/*",
+    "public/assets/shaders-previews/**/*",
+    "package.json"
+  ],
+  "win": {
+    "target": [
+      {
+        "target": "appx",
+        "arch": ["x64"]
+      }
+    ],
+    "icon": "assets/icon.png",
+    "publisherName": "LukasWana",
+    "verifyUpdateCodeSignature": false
+  },
+  "appx": {
+    "identityName": "qwanap.Haluzator",
+    "publisher": "CN=FE918F3F-F018-4D7B-9CEC-CDA327B83269",
+    "publisherDisplayName": "qwanap",
+    "displayName": "Haluzator",
+    "backgroundColor": "#0a0a0a",
+    "artifactName": "${productName}-${version}-store.${ext}"
+  }
+}
+
