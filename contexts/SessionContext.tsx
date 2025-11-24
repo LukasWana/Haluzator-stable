@@ -82,12 +82,30 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
                 loopStart,
                 loopEnd
             };
-            const blob = new Blob([JSON.stringify(sessionData, null, 2)], { type: 'application/json' });
-            const a = document.createElement('a');
-            a.href = URL.createObjectURL(blob);
-            a.download = `shader-session-${new Date().toISOString().slice(0, 10)}.json`;
-            a.click();
-            URL.revokeObjectURL(a.href);
+
+            const jsonData = JSON.stringify(sessionData, null, 2);
+            const fileName = `shader-session-${new Date().toISOString().slice(0, 10)}.json`;
+
+            // Check if we're in Electron
+            const electronAPI = (window as any).electronAPI;
+            if (electronAPI && electronAPI.saveFile) {
+                // Use Electron save dialog
+                const result = await electronAPI.saveFile(jsonData, fileName);
+                if (result.success) {
+                    console.log('Session saved to:', result.filePath);
+                } else if (!result.canceled) {
+                    console.error('Failed to save session:', result.error);
+                    alert('Failed to save session: ' + result.error);
+                }
+            } else {
+                // Fallback to browser download
+                const blob = new Blob([jsonData], { type: 'application/json' });
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = fileName;
+                a.click();
+                URL.revokeObjectURL(a.href);
+            }
         } catch (error) {
             console.error("Failed to save session:", error);
         } finally {

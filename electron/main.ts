@@ -1,7 +1,7 @@
-import { app, BrowserWindow, ipcMain } from 'electron';
+import { app, BrowserWindow, ipcMain, dialog } from 'electron';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
-import { readFileSync, existsSync } from 'fs';
+import { readFileSync, existsSync, writeFileSync } from 'fs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -92,7 +92,7 @@ app.on('activate', () => {
 ipcMain.handle('read-file', async (event, filePath: string) => {
   try {
     const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
-    let fullPath: string;
+    let fullPath: string = '';
 
     if (isDev) {
       // In dev, use relative path from project root
@@ -131,6 +131,35 @@ ipcMain.handle('read-file', async (event, filePath: string) => {
     return { success: true, content };
   } catch (error) {
     console.error('Failed to read file:', filePath, error);
+    return { success: false, error: (error as Error).message };
+  }
+});
+
+// IPC handler for saving files in Electron
+ipcMain.handle('save-file', async (event, data: string, defaultFileName: string) => {
+  try {
+    const mainWindow = BrowserWindow.fromWebContents(event.sender);
+    if (!mainWindow) {
+      return { success: false, error: 'Window not found' };
+    }
+
+    const result = await dialog.showSaveDialog(mainWindow, {
+      defaultPath: defaultFileName,
+      filters: [
+        { name: 'JSON Files', extensions: ['json'] },
+        { name: 'All Files', extensions: ['*'] }
+      ]
+    });
+
+    if (result.canceled || !result.filePath) {
+      return { success: false, canceled: true };
+    }
+
+    writeFileSync(result.filePath, data, 'utf-8');
+
+    return { success: true, filePath: result.filePath };
+  } catch (error) {
+    console.error('Failed to save file:', error);
     return { success: false, error: (error as Error).message };
   }
 });

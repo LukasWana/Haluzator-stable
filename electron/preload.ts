@@ -5,5 +5,7 @@ import { contextBridge, ipcRenderer } from 'electron';
 contextBridge.exposeInMainWorld('electronAPI', {
   // Read file from Electron main process
   readFile: (filePath: string) => ipcRenderer.invoke('read-file', filePath),
+  // Save file using Electron save dialog
+  saveFile: (data: string, defaultFileName: string) => ipcRenderer.invoke('save-file', data, defaultFileName),
 });
 
