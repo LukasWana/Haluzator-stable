@@ -14,7 +14,6 @@ import BlackHole from './BlackHole';
 import BouncingBall from './BouncingBall';
 import BoxSphereMarch from './BoxSphereMarch';
 import Bubblegum from './Bubblegum';
-import Building from './Building';
 import ChromaKelp from './ChromaKelp';
 import CityFlyover3D from './CityFlyover3D';
 import CloudTen from './CloudTen';
@@ -169,7 +168,6 @@ const sources = {
   'BouncingBall': BouncingBall,
   'BoxSphereMarch': BoxSphereMarch,
   'Bubblegum': Bubblegum,
-  'Building': Building,
   'ChromaKelp': ChromaKelp,
   'CityFlyover3D': CityFlyover3D,
   'CloudTen': CloudTen,
