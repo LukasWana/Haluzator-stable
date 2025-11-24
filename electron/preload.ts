@@ -7,5 +7,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   readFile: (filePath: string) => ipcRenderer.invoke('read-file', filePath),
   // Save file using Electron save dialog
   saveFile: (data: string, defaultFileName: string) => ipcRenderer.invoke('save-file', data, defaultFileName),
+  // Configure projection window (call after window.open)
+  configureProjectionWindow: () => ipcRenderer.invoke('configure-projection-window'),
+  // Listen for projection window closed
+  onProjectionClosed: (callback: () => void) => {
+    ipcRenderer.on('projection-window-closed', () => callback());
+    return () => ipcRenderer.removeAllListeners('projection-window-closed');
+  },
 });
 

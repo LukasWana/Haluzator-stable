@@ -188,6 +188,9 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
                 const videoElement = document.createElement('video');
                 videoElement.src = objectURL;
                 videoElement.muted = true; videoElement.loop = false; videoElement.playsInline = true;
+                videoElement.preload = 'auto';
+                // Ensure metadata is loaded
+                videoElement.load();
                 newVideos[key] = { objectURL, element: videoElement, file: videoFile };
             }
             setUserVideos(newVideos);

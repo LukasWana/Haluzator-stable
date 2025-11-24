@@ -311,6 +311,9 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ child
                 videoElement.muted = true;
                 videoElement.loop = false;
                 videoElement.playsInline = true;
+                videoElement.preload = 'auto';
+                // Ensure metadata is loaded
+                videoElement.load();
                 videoUpdates[name] = { objectURL, element: videoElement, file: file };
             } else if (file.name.toLowerCase().endsWith('.obj')) {
                  try {

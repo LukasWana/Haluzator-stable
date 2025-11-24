@@ -6,7 +6,7 @@ export const DeviceContext = createContext<DeviceContextValue | undefined>(undef
 
 export const DeviceProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const { setIsProjectingTransition } = useUI();
-    
+
     const [midiInputs, setMidiInputs] = useState<any[]>([]);
     const [selectedMidiInputId, setSelectedMidiInputId] = useState<string>('');
     const [projectionWindow, setProjectionWindow] = useState<Window | null>(null);
@@ -16,7 +16,7 @@ export const DeviceProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const audioContextRef = useRef<AudioContext | null>(null);
     const streamRef = useRef<MediaStream | null>(null);
     const audioLoopRef = useRef<number | null>(null);
-    
+
     const originalCanvasParentRef = useRef<HTMLElement | null>(null);
     const originalOverlayParentRef = useRef<HTMLElement | null>(null);
     const canvasRefForProjection = useRef<HTMLCanvasElement | null>(null);
@@ -56,14 +56,31 @@ export const DeviceProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         } catch (err) { console.error('Error accessing microphone:', err); setAudioState('error'); }
     }, []);
 
-    const handleProjectionToggle = useCallback((canvasElement: HTMLCanvasElement | null, wrapperElement: HTMLDivElement | null, htmlOverlayElement: HTMLDivElement | null) => {
+    const handleProjectionToggle = useCallback(async (canvasElement: HTMLCanvasElement | null, wrapperElement: HTMLDivElement | null, htmlOverlayElement: HTMLDivElement | null) => {
         if (projectionWindow) {
+            // Close projection window
             projectionWindow.close();
+            setProjectionWindow(null);
         } else {
             if (!canvasElement || !wrapperElement || !htmlOverlayElement) return;
             setIsProjectingTransition(true);
+
             const newWindow = window.open('', '_blank', 'width=800,height=600,menubar=no,toolbar=no,location=no,status=no');
             if (newWindow) {
+                // Check if we're in Electron and configure window
+                const electronAPI = (window as any).electronAPI;
+                if (electronAPI && electronAPI.configureProjectionWindow) {
+                    // Wait a bit for window to be created, then configure it
+                    setTimeout(async () => {
+                        await electronAPI.configureProjectionWindow();
+
+                        // Set up cleanup listener
+                        electronAPI.onProjectionClosed(() => {
+                            setProjectionWindow(null);
+                        });
+                    }, 100);
+                }
+
                 newWindow.document.title = "Shader Projection";
                 newWindow.document.body.style.cssText = 'margin:0;overflow:hidden;background-color:black;';
 
@@ -85,7 +102,7 @@ export const DeviceProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                         }
                     }
                 });
-                
+
                 originalCanvasParentRef.current = wrapperElement;
                 originalOverlayParentRef.current = htmlOverlayElement.parentElement;
 
@@ -94,7 +111,7 @@ export const DeviceProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
                 newWindow.document.body.appendChild(canvasElement);
                 newWindow.document.body.appendChild(htmlOverlayElement);
-                
+
                 newWindow.onbeforeunload = () => {
                     if (originalCanvasParentRef.current && canvasRefForProjection.current) {
                         originalCanvasParentRef.current.prepend(canvasRefForProjection.current);
@@ -112,7 +129,7 @@ export const DeviceProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             }
         }
     }, [projectionWindow, setIsProjectingTransition]);
-    
+
     const value = useMemo(() => ({
         midiInputs, selectedMidiInputId, projectionWindow, audioState, audioDataRef,
         setMidiInputs, setSelectedMidiInputId, toggleAudio, handleProjectionToggle,

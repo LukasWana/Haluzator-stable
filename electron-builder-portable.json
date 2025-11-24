@@ -13,7 +13,9 @@
   ],
   "win": {
     "target": "portable",
-    "icon": "assets/icon.png"
+    "icon": "assets/icon.png",
+    "publisherName": "LukasWana",
+    "verifyUpdateCodeSignature": false
   },
   "portable": {
     "artifactName": "${productName}-${version}-portable.${ext}"

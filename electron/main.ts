@@ -1,10 +1,13 @@
-import { app, BrowserWindow, ipcMain, dialog } from 'electron';
+import { app, BrowserWindow, ipcMain, dialog, screen } from 'electron';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
 import { readFileSync, existsSync, writeFileSync } from 'fs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+let mainWindow: BrowserWindow | null = null;
+let projectionWindow: BrowserWindow | null = null;
 
 const createWindow = () => {
   // Create the browser window
@@ -13,7 +16,7 @@ const createWindow = () => {
     ? path.join(__dirname, '..', 'assets', 'icon.png')
     : path.join(app.getAppPath(), 'assets', 'icon.png');
 
-  const mainWindow = new BrowserWindow({
+  mainWindow = new BrowserWindow({
     width: 1920,
     height: 1080,
     webPreferences: {
@@ -138,12 +141,12 @@ ipcMain.handle('read-file', async (event, filePath: string) => {
 // IPC handler for saving files in Electron
 ipcMain.handle('save-file', async (event, data: string, defaultFileName: string) => {
   try {
-    const mainWindow = BrowserWindow.fromWebContents(event.sender);
-    if (!mainWindow) {
+    const senderWindow = BrowserWindow.fromWebContents(event.sender);
+    if (!senderWindow) {
       return { success: false, error: 'Window not found' };
     }
 
-    const result = await dialog.showSaveDialog(mainWindow, {
+    const result = await dialog.showSaveDialog(senderWindow, {
       defaultPath: defaultFileName,
       filters: [
         { name: 'JSON Files', extensions: ['json'] },
@@ -160,6 +163,72 @@ ipcMain.handle('save-file', async (event, data: string, defaultFileName: string)
     return { success: true, filePath: result.filePath };
   } catch (error) {
     console.error('Failed to save file:', error);
+    return { success: false, error: (error as Error).message };
+  }
+});
+
+// Hook into window.open to customize projection windows
+app.on('web-contents-created', (event, contents) => {
+  contents.setWindowOpenHandler(({ url, frameName, features }) => {
+    // Check if this is a projection window (opened with _blank)
+    if (frameName === '_blank' || url === 'about:blank') {
+      // Create projection window with fullscreen and no frame
+      const primaryDisplay = screen.getPrimaryDisplay();
+      const { width, height } = primaryDisplay.workAreaSize;
+
+      projectionWindow = new BrowserWindow({
+        width: width,
+        height: height,
+        fullscreen: true,
+        frame: false,
+        autoHideMenuBar: true,
+        webPreferences: {
+          nodeIntegration: false,
+          contextIsolation: true,
+          webSecurity: true,
+        },
+        show: false,
+      });
+
+      projectionWindow.once('ready-to-show', () => {
+        projectionWindow?.show();
+        projectionWindow?.setFullScreen(true);
+      });
+
+      projectionWindow.on('closed', () => {
+        projectionWindow = null;
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send('projection-window-closed');
+        }
+      });
+
+      // Load blank page - content will be injected by renderer
+      projectionWindow.loadURL('about:blank');
+
+      return { action: 'allow', overrideBrowserWindowOptions: {} };
+    }
+
+    return { action: 'allow' };
+  });
+});
+
+// IPC handler to configure projection window after content is loaded
+ipcMain.handle('configure-projection-window', async (event) => {
+  try {
+    // Find the most recently created window (should be projection window)
+    const allWindows = BrowserWindow.getAllWindows();
+    const newWindow = allWindows.find(w => w !== mainWindow && w !== projectionWindow);
+
+    if (newWindow && !newWindow.isDestroyed()) {
+      projectionWindow = newWindow;
+      newWindow.setFullScreen(true);
+      newWindow.setMenuBarVisibility(false);
+      newWindow.setAutoHideMenuBar(true);
+      return { success: true };
+    }
+    return { success: false, error: 'Projection window not found' };
+  } catch (error) {
+    console.error('Failed to configure projection window:', error);
     return { success: false, error: (error as Error).message };
   }
 });

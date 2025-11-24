@@ -18,6 +18,18 @@ if (existsSync(mediaSource)) {
   }
 }
 
+// Copy projection.html to dist-electron if it exists
+const projectionSource = join(__dirname, 'electron', 'projection.html');
+const projectionDest = join(__dirname, 'dist-electron', 'projection.html');
+if (existsSync(projectionSource)) {
+  try {
+    cpSync(projectionSource, projectionDest);
+    console.log('Copied projection.html to dist-electron/');
+  } catch (error) {
+    console.warn('Failed to copy projection.html:', error);
+  }
+}
+
 build({
   entryPoints: [
     join(__dirname, 'electron/main.ts'),
