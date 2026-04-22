@@ -578,11 +578,13 @@ export const SequencerAndPlaybackProvider: React.FC<{ children: React.ReactNode 
             const shouldPlay = isActiveInViewport || isCurrentStepVideo || isEditableStepVideo;
 
             if (shouldPlay) {
+                if (!isPlaying) {
+                    videoInfo.element.loop = true;
+                } else if (isActiveInViewport && !isCurrentStepVideo) {
+                    videoInfo.element.loop = true;
+                }
+
                 if (videoInfo.element.paused) {
-                    // For viewport videos, loop them so they keep playing
-                    if (isActiveInViewport && !isCurrentStepVideo && !isEditableStepVideo) {
-                        videoInfo.element.loop = true;
-                    }
                     videoInfo.element.play().catch(e => {
                         if (e.name !== 'AbortError') {
                             console.error("Error playing viewport video:", e);

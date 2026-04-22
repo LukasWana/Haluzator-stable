@@ -162,7 +162,7 @@ export const useInputHandler = () => {
             4: { name: 'speed' },                       // 5. Fader (CC 4): Saturation
             5: { name: 'zoom' },                            // 6. Fader (CC 5): Speed
             6: { name: 'particles' },                             // 7. Fader (CC 6): Zoom
-            7: { name: '' },                        // 8. Fader (CC 7): Particles
+            //7: { name: '' },                        // 8. Fader (CC 7): Particles
         };
         const handleMidiMessage = (e) => {
             const [status, ccNumber, ccValue] = e.message.data;
