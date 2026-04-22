@@ -144,29 +144,45 @@ export const useInputHandler = () => {
 
     useEffect(() => {
         const ccMap: Record<number, { name: keyof ControlSettings; max?: number, min?: number }> = {
-            16: { name: 'levelHighlights' }, 17: { name: 'levelMidtones' }, 18: { name: 'levelShadows' },
-            19: { name: 'saturation' }, 20: { name: 'hueShift' }, 21: { name: 'glowAmount' },
-            22: { name: 'zoom' }, 23: { name: 'mandalaSegments', max: 64, min: 1 },
-            0: { name: 'overlayOpacity' }, 1: { name: 'blurAmount' }, 12: { name: 'chromaAmount' },
-            3: { name: 'speed' }, 5: { name: 'stepsPerMinute', max: 180, min: 3 }, 6: { name: 'audioInfluence' },
+            // Knobs (podľa vášho custom rozloženia z obrázka)
+            16: { name: 'stepsPerMinute', max: 120, min: 6 }, // 1. Knob (CC 16): Tempo
+            8:  { name: 'overlayOpacity' },                   // 2. Knob (CC 8): Overlay
+            18: { name: 'blurAmount' },                       // 3. Knob (CC 18): Blur
+            19: { name: 'glowAmount' },                       // 4. Knob (CC 19): Glow
+            // Knob 5 (CC 20) zostáva zatiaľ voľný
+            21: { name: 'chromaAmount' },                     // 6. Knob (CC 21): Chroma
+            22: { name: 'hueShift' },                         // 7. Knob (CC 22): Hue
+            23: { name: 'mandalaSegments', max: 16, min: 1 }, // 8. Knob (CC 23): Mandala
+            
+            // Faders (podľa vášho custom rozloženia z obrázka)
+            11: { name: 'audioInfluence' },                   // 1. Fader (CC 11): Audio Influence
+            1:  { name: 'levelShadows' },                     // 2. Fader (CC 1): Shadows
+            2:  { name: 'levelMidtones' },                    // 3. Fader (CC 2): Midtones
+            3:  { name: 'levelHighlights' },                  // 4. Fader (CC 3): Highlights
+            4:  { name: 'saturation' },                       // 5. Fader (CC 4): Saturation
+            5:  { name: 'speed' },                            // 6. Fader (CC 5): Speed
+            6:  { name: 'zoom' },                             // 7. Fader (CC 6): Zoom
+            7:  { name: 'particles' },                        // 8. Fader (CC 7): Particles
         };
         const handleMidiMessage = (e) => {
             const [status, ccNumber, ccValue] = e.message.data;
             if (status >= 176 && status <= 191) {
-                if (ccValue > 0) { // Button presses
+                if (ccNumber === 39) { // Tlačidlo "S" pod 8. knobom ako fyzický TOGGLE
+                    handleControlChange('mandalaAffectsOverlay', ccValue > 0);
+                    return;
+                }
+                
+                if (ccValue > 0) { // Ostatné Momentary tlačidlá
                     if (ccNumber === 41 || ccNumber === 42) { togglePlay(); return; }
                     if (ccNumber === 45) { toggleAudio(); return; }
                     if (ccNumber === 58) { handlePageChange((currentPage - 1 + NUM_PAGES) % NUM_PAGES); return; }
                     if (ccNumber === 59) { handlePageChange((currentPage + 1) % NUM_PAGES); return; }
-                    if (ccNumber >= 64 && ccNumber <= 71) { triggerLiveVjStep(ccNumber - 64); return; }
+                    if (ccNumber >= 64 && ccNumber <= 70) { triggerLiveVjStep(ccNumber - 64); return; }
+                    if (ccNumber === 10) { triggerLiveVjStep(7); return; } // Posledné R tlačidlo (CC 10)
                     if (ccNumber === 32) { setLoopStart(editableStep); return; }
                     if (ccNumber === 33) { setLoopEnd(editableStep); return; }
                     if (ccNumber === 34) { toggleLoop(); return; }
-                    if (ccNumber === 35) {
-                        const controls = pageControls[currentPage] || defaultControls;
-                        handleControlChange('mandalaAffectsOverlay', !controls.mandalaAffectsOverlay);
-                        return;
-                    }
+
                     if (ccNumber === 48) { shiftLoop('left'); return; }
                     if (ccNumber === 49) { shiftLoop('right'); return; }
                 }
