@@ -145,24 +145,24 @@ export const useInputHandler = () => {
     useEffect(() => {
         const ccMap: Record<number, { name: keyof ControlSettings; max?: number, min?: number }> = {
             // Knobs (podľa vášho custom rozloženia z obrázka)
-            16: { name: 'stepsPerMinute', max: 120, min: 6 }, // 1. Knob (CC 16): Tempo
-            8:  { name: 'overlayOpacity' },                   // 2. Knob (CC 8): Overlay
-            18: { name: 'blurAmount' },                       // 3. Knob (CC 18): Blur
-            19: { name: 'glowAmount' },                       // 4. Knob (CC 19): Glow
-            // Knob 5 (CC 20) zostáva zatiaľ voľný
+            16: { name: 'stepsPerMinute', max: 200, min: 6 }, // 1. Knob (CC 16): Tempo
+            8: { name: 'overlayOpacity' },                   // 2. Knob (CC 8): Overlay
+            18: { name: 'audioInfluence' },                       // 3. Knob (CC 18): Blur
+            19: { name: 'blurAmount' },                       // 4. Knob (CC 19): Glow
+            20: { name: 'glowAmount' },                       // 5. Knob (CC 20) zostáva zatiaľ voľný
             21: { name: 'chromaAmount' },                     // 6. Knob (CC 21): Chroma
             22: { name: 'hueShift' },                         // 7. Knob (CC 22): Hue
             23: { name: 'mandalaSegments', max: 16, min: 1 }, // 8. Knob (CC 23): Mandala
-            
+
             // Faders (podľa vášho custom rozloženia z obrázka)
-            11: { name: 'audioInfluence' },                   // 1. Fader (CC 11): Audio Influence
-            1:  { name: 'levelShadows' },                     // 2. Fader (CC 1): Shadows
-            2:  { name: 'levelMidtones' },                    // 3. Fader (CC 2): Midtones
-            3:  { name: 'levelHighlights' },                  // 4. Fader (CC 3): Highlights
-            4:  { name: 'saturation' },                       // 5. Fader (CC 4): Saturation
-            5:  { name: 'speed' },                            // 6. Fader (CC 5): Speed
-            6:  { name: 'zoom' },                             // 7. Fader (CC 6): Zoom
-            7:  { name: 'particles' },                        // 8. Fader (CC 7): Particles
+            11: { name: 'levelShadows' },                   // 1. Fader (CC 11): Audio Influence
+            1: { name: 'levelMidtones' },                     // 2. Fader (CC 1): Shadows
+            2: { name: 'levelHighlights' },                    // 3. Fader (CC 2): Midtones
+            3: { name: 'saturation' },                  // 4. Fader (CC 3): Highlights
+            4: { name: 'speed' },                       // 5. Fader (CC 4): Saturation
+            5: { name: 'zoom' },                            // 6. Fader (CC 5): Speed
+            6: { name: 'particles' },                             // 7. Fader (CC 6): Zoom
+            7: { name: '' },                        // 8. Fader (CC 7): Particles
         };
         const handleMidiMessage = (e) => {
             const [status, ccNumber, ccValue] = e.message.data;
@@ -171,7 +171,7 @@ export const useInputHandler = () => {
                     handleControlChange('mandalaAffectsOverlay', ccValue > 0);
                     return;
                 }
-                
+
                 if (ccValue > 0) { // Ostatné Momentary tlačidlá
                     if (ccNumber === 41 || ccNumber === 42) { togglePlay(); return; }
                     if (ccNumber === 45) { toggleAudio(); return; }
