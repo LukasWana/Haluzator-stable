@@ -65,67 +65,191 @@ export const DeviceProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             if (!canvasElement || !wrapperElement || !htmlOverlayElement) return;
             setIsProjectingTransition(true);
 
-            const newWindow = window.open('', '_blank', 'width=800,height=600,menubar=no,toolbar=no,location=no,status=no');
-            if (newWindow) {
-                // Check if we're in Electron and configure window
-                const electronAPI = (window as any).electronAPI;
-                if (electronAPI && electronAPI.configureProjectionWindow) {
-                    // Wait a bit for window to be created, then configure it
-                    setTimeout(async () => {
-                        await electronAPI.configureProjectionWindow();
+            const electronAPI = (window as any).electronAPI;
 
-                        // Set up cleanup listener
-                        electronAPI.onProjectionClosed(() => {
-                            setProjectionWindow(null);
-                        });
-                    }, 100);
-                }
+            // Check if we're in Electron
+            if (electronAPI && electronAPI.createProjectionWindow) {
+                // Electron mode: use IPC to create projection window
+                try {
+                    // Set up cleanup listener
+                    electronAPI.onProjectionClosed(() => {
+                        setProjectionWindow(null);
+                    });
 
-                newWindow.document.title = "Shader Projection";
-                newWindow.document.body.style.cssText = 'margin:0;overflow:hidden;background-color:black;';
+                    // Trigger window.open - Electron handler will create projection window
+                    // window.open returns null because handler denies it
+                    window.open('', '_blank');
 
-                // Copy all stylesheets from the main document to the new window
-                Array.from(document.styleSheets).forEach(styleSheet => {
-                    try {
-                        // If we can access the rules, create a <style> tag with the content
-                        const cssRules = Array.from(styleSheet.cssRules).map(rule => rule.cssText).join(' ');
-                        const styleElement = newWindow.document.createElement('style');
-                        styleElement.textContent = cssRules;
-                        newWindow.document.head.appendChild(styleElement);
-                    } catch (e) {
-                        // If we can't access cssRules (e.g., for cross-origin stylesheets), create a <link> tag
-                        if (styleSheet.href) {
-                            const linkElement = newWindow.document.createElement('link');
-                            linkElement.rel = 'stylesheet';
-                            linkElement.href = styleSheet.href;
-                            newWindow.document.head.appendChild(linkElement);
+                    // Wait for projection window to be created
+                    await new Promise(resolve => setTimeout(resolve, 500));
+
+                    // Ensure elements have IDs
+                    const canvasId = canvasElement.id || 'shader-canvas';
+                    const overlayId = htmlOverlayElement.id || 'html-overlay-container';
+                    if (!canvasElement.id) canvasElement.id = canvasId;
+                    if (!htmlOverlayElement.id) htmlOverlayElement.id = overlayId;
+
+                    // Store references for cleanup
+                    originalCanvasParentRef.current = wrapperElement;
+                    originalOverlayParentRef.current = htmlOverlayElement.parentElement;
+                    canvasRefForProjection.current = canvasElement;
+                    overlayRefForProjection.current = htmlOverlayElement;
+
+                    // Set up listener for when projection is ready
+                    const removeListener = electronAPI.onProjectionReady(async (data) => {
+                        try {
+                            // Elements are stored in window.__projectionCanvas and __projectionOverlay
+                            // Now we need to move them to projection window
+                            // We'll use executeJavaScript in projection window to access main window
+                            // via a message channel or global variable
+
+                            // Actually, simplest: use executeJavaScript in projection window
+                            // to create a script that will use postMessage to request elements
+                            // Or use a global variable approach
+
+                            // For now, create proxy window - elements will be moved via IPC
+                            const proxyWindow = {
+                                close: () => {
+                                    // Move elements back
+                                    const canvas = (window as any).__projectionCanvas;
+                                    const overlay = (window as any).__projectionOverlay;
+                                    const canvasParent = (window as any).__projectionCanvasParent;
+                                    const overlayParent = (window as any).__projectionOverlayParent;
+
+                                    if (canvasParent && canvas) {
+                                        canvasParent.prepend(canvas);
+                                    }
+                                    if (overlayParent && overlay) {
+                                        overlayParent.appendChild(overlay);
+                                    }
+
+                                    // Clean up globals
+                                    delete (window as any).__projectionCanvas;
+                                    delete (window as any).__projectionOverlay;
+                                    delete (window as any).__projectionCanvasParent;
+                                    delete (window as any).__projectionOverlayParent;
+
+                                    setProjectionWindow(null);
+                                },
+                                document: null as any,
+                            } as Window;
+
+                            // Now move elements to projection window
+                            // We'll use executeJavaScript in projection window to access main window
+                            // and move elements directly
+                            // Since we can't directly access main window from projection window,
+                            // we'll use a workaround: create a script in projection window
+                            // that will use postMessage to communicate with main window
+
+                            // Actually, better: use executeJavaScript in projection window
+                            // to create an iframe that loads main window's content
+                            // Or use webContents.executeJavaScript with access to both windows
+
+                            // For now, just set up the proxy window
+                            // Elements will be moved when projection window loads
+                            setProjectionWindow(proxyWindow);
+
+                            // Wait a bit and then try to move elements
+                            setTimeout(() => {
+                                // Try to access projection window and move elements
+                                // This will be handled by projection window's script
+                            }, 500);
+
+                            setIsProjectingTransition(false);
+                            removeListener();
+                        } catch (error) {
+                            console.error('Error setting up projection:', error);
+                            setIsProjectingTransition(false);
+                            removeListener();
                         }
+                    });
+
+                    // Move elements to projection window via IPC
+                    const moveResult = await electronAPI.moveElementsToProjection(canvasId, overlayId);
+
+                    if (!moveResult.success) {
+                        removeListener();
+                        setIsProjectingTransition(false);
+                        alert('Failed to move elements: ' + (moveResult.error || 'Unknown error'));
+                        return;
                     }
-                });
 
-                originalCanvasParentRef.current = wrapperElement;
-                originalOverlayParentRef.current = htmlOverlayElement.parentElement;
-
-                canvasRefForProjection.current = canvasElement;
-                overlayRefForProjection.current = htmlOverlayElement;
-
-                newWindow.document.body.appendChild(canvasElement);
-                newWindow.document.body.appendChild(htmlOverlayElement);
-
-                newWindow.onbeforeunload = () => {
-                    if (originalCanvasParentRef.current && canvasRefForProjection.current) {
-                        originalCanvasParentRef.current.prepend(canvasRefForProjection.current);
-                    }
-                    if (originalOverlayParentRef.current && overlayRefForProjection.current) {
-                        originalOverlayParentRef.current.appendChild(overlayRefForProjection.current);
-                    }
-                    setProjectionWindow(null);
-                };
-                setProjectionWindow(newWindow);
-                setTimeout(() => setIsProjectingTransition(false), 500);
+                    // Elements will be moved when projection-ready event fires
+                    // Set timeout in case event doesn't fire
+                    setTimeout(() => {
+                        if (isProjectingTransition) {
+                            removeListener();
+                            setIsProjectingTransition(false);
+                            // Try to access projection window directly
+                            // Since we can't, we'll create proxy window anyway
+                            const proxyWindow = {
+                                close: () => {
+                                    if (originalCanvasParentRef.current && canvasRefForProjection.current) {
+                                        originalCanvasParentRef.current.prepend(canvasRefForProjection.current);
+                                    }
+                                    if (originalOverlayParentRef.current && overlayRefForProjection.current) {
+                                        originalOverlayParentRef.current.appendChild(overlayRefForProjection.current);
+                                    }
+                                    setProjectionWindow(null);
+                                },
+                                document: null as any,
+                            } as Window;
+                            setProjectionWindow(proxyWindow);
+                        }
+                    }, 2000);
+                } catch (error) {
+                    console.error('Failed to open projection window:', error);
+                    setIsProjectingTransition(false);
+                    alert('Failed to open projection window');
+                }
             } else {
-                 setIsProjectingTransition(false);
-                 alert('Popup blocked! Please allow popups for this site.');
+                // Browser mode: use original DOM manipulation
+                const newWindow = window.open('', '_blank', 'width=800,height=600,menubar=no,toolbar=no,location=no,status=no');
+                if (newWindow) {
+                    newWindow.document.title = "Shader Projection";
+                    newWindow.document.body.style.cssText = 'margin:0;overflow:hidden;background-color:black;';
+
+                    // Copy all stylesheets from the main document to the new window
+                    Array.from(document.styleSheets).forEach(styleSheet => {
+                        try {
+                            const cssRules = Array.from(styleSheet.cssRules).map(rule => rule.cssText).join(' ');
+                            const styleElement = newWindow.document.createElement('style');
+                            styleElement.textContent = cssRules;
+                            newWindow.document.head.appendChild(styleElement);
+                        } catch (e) {
+                            if (styleSheet.href) {
+                                const linkElement = newWindow.document.createElement('link');
+                                linkElement.rel = 'stylesheet';
+                                linkElement.href = styleSheet.href;
+                                newWindow.document.head.appendChild(linkElement);
+                            }
+                        }
+                    });
+
+                    originalCanvasParentRef.current = wrapperElement;
+                    originalOverlayParentRef.current = htmlOverlayElement.parentElement;
+
+                    canvasRefForProjection.current = canvasElement;
+                    overlayRefForProjection.current = htmlOverlayElement;
+
+                    newWindow.document.body.appendChild(canvasElement);
+                    newWindow.document.body.appendChild(htmlOverlayElement);
+
+                    newWindow.onbeforeunload = () => {
+                        if (originalCanvasParentRef.current && canvasRefForProjection.current) {
+                            originalCanvasParentRef.current.prepend(canvasRefForProjection.current);
+                        }
+                        if (originalOverlayParentRef.current && overlayRefForProjection.current) {
+                            originalOverlayParentRef.current.appendChild(overlayRefForProjection.current);
+                        }
+                        setProjectionWindow(null);
+                    };
+                    setProjectionWindow(newWindow);
+                    setTimeout(() => setIsProjectingTransition(false), 500);
+                } else {
+                    setIsProjectingTransition(false);
+                    alert('Popup blocked! Please allow popups for this site.');
+                }
             }
         }
     }, [projectionWindow, setIsProjectingTransition]);

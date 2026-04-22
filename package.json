@@ -1,7 +1,7 @@
 {
   "name": "haluzator",
   "private": true,
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "play realtime animation",
   "author": "Your Name",
   "type": "module",
@@ -9,6 +9,7 @@
   "scripts": {
     "dev": "vite",
     "generate-previews": "npx tsx generate-shader-previews.ts",
+    "generate-tile-icons": "npx tsx generate-tile-icons.ts",
     "build": "vite build && node build-electron.js && electron-builder",
     "build:win": "vite build && node build-electron.js && electron-builder --win",
     "build:win:portable": "node clean-release.js && node copy-media.js && vite build && node build-electron.js && electron-builder --config electron-builder-portable.json --win",

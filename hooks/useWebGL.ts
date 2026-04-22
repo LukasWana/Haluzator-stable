@@ -106,7 +106,7 @@ export function useWebGL(
       gl.shaderSource(shader, source);
       gl.compileShader(shader);
       if (gl.getShaderParameter(shader, gl.COMPILE_STATUS)) return shader;
-      
+
       const log = gl.getShaderInfoLog(shader);
       propsRef.current.onShaderError(key, `Error compiling shader:\n${log}`);
       gl.deleteShader(shader);
@@ -173,7 +173,7 @@ export function useWebGL(
             u_shaderTexture: gl.getUniformLocation(program, "u_shaderTexture"),
             u_useShaderTexture: gl.getUniformLocation(program, "u_useShaderTexture"),
         },
-        attribs: { 
+        attribs: {
             a_position: gl.getAttribLocation(program, "a_position"),
             a_normal: gl.getAttribLocation(program, "a_normal"),
         }
@@ -187,13 +187,13 @@ export function useWebGL(
     const gl = glRef.current;
     if (!gl) return;
     const { shaders, userImages, userVideos, userModels, audioDataRef, audioInfluence, speed, zoom, overlayOpacity, isTransitioning, transitionProgress } = propsRef.current;
-    
+
     // --- 1. RENDER BASE SHADER ---
     const baseFbo = renderStateRef.current.fbos.baseFbo;
     if (!baseFbo) return;
     gl.bindFramebuffer(gl.FRAMEBUFFER, baseFbo.framebuffer);
     gl.viewport(0, 0, baseFbo.width, baseFbo.height);
-    
+
     const shaderCode = shaders[shaderKey] || BLACK_SHADER_SRC;
     const baseProgram = getProgram(gl, shaderKey, VERTEX_SHADER_SRC, getFragmentShaderSrc(shaderCode)) || getProgram(gl, '__ERROR__', VERTEX_SHADER_SRC, getFragmentShaderSrc(ERROR_SHADER_SRC));
     if (!baseProgram) return;
@@ -214,7 +214,7 @@ export function useWebGL(
     gl.drawArrays(gl.TRIANGLES, 0, 6);
     gl.disableVertexAttribArray(baseProgram.attribs.a_position);
     gl.bindBuffer(gl.ARRAY_BUFFER, null);
-    
+
     // --- 2. RENDER MEDIA OVERLAY (IF ANY) ---
     let overlayTexture: WebGLTexture | null = null;
     let overlayDims: { width: number, height: number } | null = null;
@@ -317,16 +317,16 @@ export function useWebGL(
                         break;
                     }
                 }
-                
+
                 let modelMatrix = createIdentityMatrix();
                 if (model.center && typeof model.scale === 'number') {
                      modelMatrix = multiplyMatrices(modelMatrix, createTranslationMatrix(-model.center.x, -model.center.y, -model.center.z));
                      modelMatrix = multiplyMatrices(modelMatrix, createScaleMatrix(model.scale, model.scale, model.scale));
                 }
-                
+
                 const zoomAmount = 0.1 + (modelZoom / 100.0) * 4.0;
                 modelMatrix = multiplyMatrices(modelMatrix, createScaleMatrix(zoomAmount, zoomAmount, zoomAmount));
-                
+
                 // Static Rotation
                 let staticRotationMatrix = createIdentityMatrix();
                 staticRotationMatrix = multiplyMatrices(staticRotationMatrix, createXRotationMatrix(modelRotationX * Math.PI / 180));
@@ -412,14 +412,14 @@ export function useWebGL(
                         gl.enableVertexAttribArray(modelProgram.attribs.a_normal);
                         gl.bindBuffer(gl.ARRAY_BUFFER, modelBuffers.normal);
                         gl.vertexAttribPointer(modelProgram.attribs.a_normal, 3, gl.FLOAT, false, 0, 0);
-                        
+
                         gl.uniform1i(modelProgram.uniforms.u_useShaderTexture, modelUseShaderTexture ? 1 : 0);
                         if (modelUseShaderTexture) {
                             gl.activeTexture(gl.TEXTURE2);
                             gl.bindTexture(gl.TEXTURE_2D, baseFbo.texture);
                             gl.uniform1i(modelProgram.uniforms.u_shaderTexture, 2);
                         }
-                        
+
                         gl.uniformMatrix4fv(modelProgram.uniforms.u_projectionMatrix, false, projectionMatrix);
                         gl.uniformMatrix4fv(modelProgram.uniforms.u_viewMatrix, false, viewMatrix);
                         gl.uniformMatrix4fv(modelProgram.uniforms.u_modelMatrix, false, modelMatrix);
@@ -429,7 +429,7 @@ export function useWebGL(
                         gl.uniform1f(modelProgram.uniforms.u_alpha, transitionAlpha);
                         gl.uniform1f(modelProgram.uniforms.u_vertexNoiseAmount, vertexNoiseAmount / 100.0);
                         gl.uniform1f(modelProgram.uniforms.iTime, time);
-                        
+
                         gl.drawArrays(gl.TRIANGLES, 0, modelBuffers.count);
 
                         gl.disableVertexAttribArray(modelProgram.attribs.a_position);
@@ -448,7 +448,7 @@ export function useWebGL(
         overlayTexture = renderStateRef.current.imageTextures[mediaKey] || renderStateRef.current.videoTextures[mediaKey];
         overlayDims = renderStateRef.current.mediaDimensions[mediaKey];
     }
-    
+
     // --- 3. COMPOSITE FINAL SCENE TO TARGET FBO ---
     gl.bindFramebuffer(gl.FRAMEBUFFER, targetFbo.framebuffer);
     gl.viewport(0, 0, targetFbo.width, targetFbo.height);
@@ -462,9 +462,9 @@ export function useWebGL(
     gl.enableVertexAttribArray(compositingProgram.attribs.a_position);
     gl.bindBuffer(gl.ARRAY_BUFFER, renderStateRef.current.positionBuffer);
     gl.vertexAttribPointer(compositingProgram.attribs.a_position, 2, gl.FLOAT, false, 0, 0);
-    
+
     gl.uniform3f(compositingProgram.uniforms.iResolution, targetFbo.width, targetFbo.height, 1);
-    
+
     // Bind base texture (from step 1)
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, baseFbo.texture);
@@ -476,7 +476,7 @@ export function useWebGL(
 
     const hasOverlay = !!overlayTexture;
     gl.uniform1i(compositingProgram.uniforms.u_hasOverlay, hasOverlay ? 1 : 0);
-    
+
     gl.activeTexture(gl.TEXTURE1); // Activate unit 1 for the overlay texture
     if (hasOverlay) {
         gl.uniform1f(compositingProgram.uniforms.u_overlayOpacity, overlayOpacity / 100.0);
@@ -511,17 +511,17 @@ export function useWebGL(
     const render = () => {
         const currentActiveWindow = propsRef.current.projectionWindow || window;
         animationFrameIdRef.current = currentActiveWindow.requestAnimationFrame(render);
-      
+
         if (propsRef.current.isSessionLoading || !glRef.current || glRef.current.isContextLost()) {
             return;
         }
-        
+
         const gl = glRef.current;
         const now = Date.now();
         const delta = (now - renderStateRef.current.lastFrameTime) / 1000.0;
         renderStateRef.current.time += delta;
         renderStateRef.current.lastFrameTime = now;
-        
+
         const {
             fromShaderKey, toShaderKey, fromMediaKey, toMediaKey, isTransitioning, transitionProgress,
             fromModelSettings, toModelSettings,
@@ -537,12 +537,12 @@ export function useWebGL(
             onFpsUpdate: _f,
             ...controls
         } = propsRef.current;
-        
+
         const { fbos } = renderStateRef.current;
         const sceneFboA = fbos.sceneFboA;
         const sceneFboB = fbos.sceneFboB;
         if (!sceneFboA || !sceneFboB) return;
-        
+
         // --- Scene Rendering Phase ---
         // Always render the 'to' scene, as it's the current target.
         renderScene(toShaderKey, toMediaKey, sceneFboB, renderStateRef.current.time, toModelSettings);
@@ -570,28 +570,28 @@ export function useWebGL(
         // --- Composition Phase ---
         const postFbo = fbos.postFbo;
         if (!postFbo) return;
-        
+
         gl.bindFramebuffer(gl.FRAMEBUFFER, postFbo.framebuffer);
         gl.viewport(0, 0, postFbo.width, postFbo.height);
-        
+
         const transitionProgram = getProgram(gl, '__TRANSITION__', VERTEX_SHADER_SRC, TRANSITION_SHADER_SRC);
         if (transitionProgram) {
             gl.useProgram(transitionProgram.program);
-            
+
             gl.enableVertexAttribArray(transitionProgram.attribs.a_position);
             gl.bindBuffer(gl.ARRAY_BUFFER, renderStateRef.current.positionBuffer);
             gl.vertexAttribPointer(transitionProgram.attribs.a_position, 2, gl.FLOAT, false, 0, 0);
-            
+
             // If not transitioning, use the 'to' buffer for both 'from' and 'to' textures
             // to avoid reading from a stale 'from' buffer. This fixes the blinking.
             gl.activeTexture(gl.TEXTURE0);
             gl.bindTexture(gl.TEXTURE_2D, isTransitioning ? sceneFboA.texture : sceneFboB.texture);
             gl.uniform1i(transitionProgram.uniforms.u_fromTexture, 0);
-            
+
             gl.activeTexture(gl.TEXTURE1);
             gl.bindTexture(gl.TEXTURE_2D, sceneFboB.texture);
             gl.uniform1i(transitionProgram.uniforms.u_toTexture, 1);
-            
+
             gl.uniform1f(transitionProgram.uniforms.u_progress, isTransitioning ? transitionProgress : 1.0);
             gl.uniform3f(transitionProgram.uniforms.iResolution, postFbo.width, postFbo.height, 1);
             gl.drawArrays(gl.TRIANGLES, 0, 6);
@@ -638,7 +638,7 @@ export function useWebGL(
             const particleProgram = getProgram(gl, '__PARTICLES__', VERTEX_SHADER_SRC, PARTICLE_OVERLAY_SHADER_SRC);
             if (particleProgram) {
                 gl.useProgram(particleProgram.program);
-                
+
                 gl.enableVertexAttribArray(particleProgram.attribs.a_position);
                 gl.bindBuffer(gl.ARRAY_BUFFER, renderStateRef.current.positionBuffer);
                 gl.vertexAttribPointer(particleProgram.attribs.a_position, 2, gl.FLOAT, false, 0, 0);
@@ -647,7 +647,7 @@ export function useWebGL(
                 gl.uniform1f(particleProgram.uniforms.iTime, renderStateRef.current.time);
                 gl.uniform4f(particleProgram.uniforms.iAudio, _a.current.low, _a.current.mid, _a.current.high, _a.current.overall * (controls.audioInfluence / 100.0));
                 gl.uniform1f(particleProgram.uniforms.u_particleAmount, controls.particles / 100.0);
-                
+
                 gl.drawArrays(gl.TRIANGLES, 0, 6);
 
                 gl.disableVertexAttribArray(particleProgram.attribs.a_position);
@@ -656,7 +656,7 @@ export function useWebGL(
 
             gl.disable(gl.BLEND);
         }
-        
+
         // --- FPS Calculation ---
         const fpsState = renderStateRef.current.fps;
         const currentFps = 1.0 / delta;
@@ -668,7 +668,7 @@ export function useWebGL(
             fpsState.lastTime = now;
         }
     };
-    
+
     if (animationFrameIdRef.current === null) {
         const currentActiveWindow = propsRef.current.projectionWindow || window;
         animationFrameIdRef.current = currentActiveWindow.requestAnimationFrame(render);
@@ -684,12 +684,195 @@ export function useWebGL(
     };
   }, [canvasRef, getProgram, renderScene, props.projectionWindow]);
 
+  // Restart render loop when projection window changes
+  useEffect(() => {
+    // Cancel existing animation frame
+    if (animationFrameIdRef.current) {
+      const oldWindow = props.projectionWindow || window;
+      oldWindow.cancelAnimationFrame(animationFrameIdRef.current);
+      animationFrameIdRef.current = null;
+    }
+
+    // Restart render loop with new window context
+    if (canvasRef.current && glRef.current && !props.isSessionLoading) {
+      const render = () => {
+        const currentActiveWindow = propsRef.current.projectionWindow || window;
+        animationFrameIdRef.current = currentActiveWindow.requestAnimationFrame(render);
+
+        if (propsRef.current.isSessionLoading || !glRef.current || glRef.current.isContextLost()) {
+            return;
+        }
+
+        const gl = glRef.current;
+        const now = Date.now();
+        const delta = (now - renderStateRef.current.lastFrameTime) / 1000.0;
+        renderStateRef.current.time += delta;
+        renderStateRef.current.lastFrameTime = now;
+
+        const {
+            fromShaderKey, toShaderKey, fromMediaKey, toMediaKey, isTransitioning, transitionProgress,
+            fromModelSettings, toModelSettings,
+            projectionWindow: _p,
+            isSessionLoading: _l,
+            isPlaying: _ip,
+            shaders: _s,
+            userImages: _ui,
+            userVideos: _uv,
+            userModels: _um,
+            audioDataRef: _a,
+            onShaderError: _e,
+            onFpsUpdate: _f,
+            ...controls
+        } = propsRef.current;
+
+        const { fbos } = renderStateRef.current;
+        const sceneFboA = fbos.sceneFboA;
+        const sceneFboB = fbos.sceneFboB;
+        if (!sceneFboA || !sceneFboB) return;
+
+        // --- Scene Rendering Phase ---
+        renderScene(toShaderKey, toMediaKey, sceneFboB, renderStateRef.current.time, toModelSettings);
+        if (isTransitioning) {
+            renderScene(fromShaderKey, fromMediaKey, sceneFboA, renderStateRef.current.time, fromModelSettings);
+        }
+
+        // Update video textures
+        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+        [fromMediaKey, toMediaKey].filter(Boolean).forEach(key => {
+            const videoInfo = propsRef.current.userVideos[key!];
+            if (videoInfo && videoInfo.element.readyState >= videoInfo.element.HAVE_METADATA) {
+                const videoTexture = renderStateRef.current.videoTextures[key!];
+                gl.bindTexture(gl.TEXTURE_2D, videoTexture);
+                gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, videoInfo.element);
+                const { videoWidth, videoHeight } = videoInfo.element;
+                if (videoWidth > 0 && videoHeight > 0) {
+                    renderStateRef.current.mediaDimensions[key!] = { width: videoWidth, height: videoHeight };
+                }
+            }
+        });
+        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+
+        // --- Composition Phase ---
+        const postFbo = fbos.postFbo;
+        if (!postFbo) return;
+
+        gl.bindFramebuffer(gl.FRAMEBUFFER, postFbo.framebuffer);
+        gl.viewport(0, 0, postFbo.width, postFbo.height);
+
+        const transitionProgram = getProgram(gl, '__TRANSITION__', VERTEX_SHADER_SRC, TRANSITION_SHADER_SRC);
+        if (transitionProgram) {
+            gl.useProgram(transitionProgram.program);
+
+            gl.enableVertexAttribArray(transitionProgram.attribs.a_position);
+            gl.bindBuffer(gl.ARRAY_BUFFER, renderStateRef.current.positionBuffer);
+            gl.vertexAttribPointer(transitionProgram.attribs.a_position, 2, gl.FLOAT, false, 0, 0);
+
+            gl.activeTexture(gl.TEXTURE0);
+            gl.bindTexture(gl.TEXTURE_2D, isTransitioning ? sceneFboA.texture : sceneFboB.texture);
+            gl.uniform1i(transitionProgram.uniforms.u_fromTexture, 0);
+
+            gl.activeTexture(gl.TEXTURE1);
+            gl.bindTexture(gl.TEXTURE_2D, sceneFboB.texture);
+            gl.uniform1i(transitionProgram.uniforms.u_toTexture, 1);
+
+            gl.uniform1f(transitionProgram.uniforms.u_progress, isTransitioning ? transitionProgress : 1.0);
+            gl.uniform3f(transitionProgram.uniforms.iResolution, postFbo.width, postFbo.height, 1);
+            gl.drawArrays(gl.TRIANGLES, 0, 6);
+
+            gl.disableVertexAttribArray(transitionProgram.attribs.a_position);
+            gl.bindBuffer(gl.ARRAY_BUFFER, null);
+        }
+
+        // --- Post-processing Phase ---
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+        const postProgram = getProgram(gl, '__POST__', VERTEX_SHADER_SRC, POST_PROCESSING_SHADER_SRC);
+        if(postProgram) {
+            gl.useProgram(postProgram.program);
+
+            gl.enableVertexAttribArray(postProgram.attribs.a_position);
+            gl.bindBuffer(gl.ARRAY_BUFFER, renderStateRef.current.positionBuffer);
+            gl.vertexAttribPointer(postProgram.attribs.a_position, 2, gl.FLOAT, false, 0, 0);
+
+            gl.activeTexture(gl.TEXTURE0);
+            gl.bindTexture(gl.TEXTURE_2D, postFbo.texture);
+            gl.uniform1i(postProgram.uniforms.iChannel0, 0);
+            gl.uniform3f(postProgram.uniforms.iResolution, gl.canvas.width, gl.canvas.height, 1);
+            gl.uniform1f(postProgram.uniforms.u_blurAmount, controls.blurAmount / 100.0);
+            gl.uniform1f(postProgram.uniforms.u_glowAmount, controls.glowAmount / 100.0);
+            gl.uniform1f(postProgram.uniforms.u_chromaAmount, controls.chromaAmount / 100.0);
+            gl.uniform1f(postProgram.uniforms.u_hueShift, controls.hueShift / 100.0);
+            gl.uniform1f(postProgram.uniforms.u_mandalaSegments, Math.floor(controls.mandalaSegments));
+            gl.uniform1f(postProgram.uniforms.u_levelShadows, controls.levelShadows / 100.0);
+            gl.uniform1f(postProgram.uniforms.u_levelMidtones, controls.levelMidtones / 100.0);
+            gl.uniform1f(postProgram.uniforms.u_levelHighlights, 1.0 - (controls.levelHighlights / 100.0));
+            gl.uniform1f(postProgram.uniforms.u_saturation, controls.saturation / 100.0);
+            gl.drawArrays(gl.TRIANGLES, 0, 6);
+
+            gl.disableVertexAttribArray(postProgram.attribs.a_position);
+            gl.bindBuffer(gl.ARRAY_BUFFER, null);
+        }
+
+        // --- Particle Overlay Phase ---
+        if (controls.particles > 0) {
+            gl.enable(gl.BLEND);
+            gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
+
+            const particleProgram = getProgram(gl, '__PARTICLES__', VERTEX_SHADER_SRC, PARTICLE_OVERLAY_SHADER_SRC);
+            if (particleProgram) {
+                gl.useProgram(particleProgram.program);
+
+                gl.enableVertexAttribArray(particleProgram.attribs.a_position);
+                gl.bindBuffer(gl.ARRAY_BUFFER, renderStateRef.current.positionBuffer);
+                gl.vertexAttribPointer(particleProgram.attribs.a_position, 2, gl.FLOAT, false, 0, 0);
+
+                gl.uniform3f(particleProgram.uniforms.iResolution, gl.canvas.width, gl.canvas.height, 1);
+                gl.uniform1f(particleProgram.uniforms.iTime, renderStateRef.current.time);
+                gl.uniform4f(particleProgram.uniforms.iAudio, _a.current.low, _a.current.mid, _a.current.high, _a.current.overall * (controls.audioInfluence / 100.0));
+                gl.uniform1f(particleProgram.uniforms.u_particleAmount, controls.particles / 100.0);
+
+                gl.drawArrays(gl.TRIANGLES, 0, 6);
+
+                gl.disableVertexAttribArray(particleProgram.attribs.a_position);
+                gl.bindBuffer(gl.ARRAY_BUFFER, null);
+            }
+
+            gl.disable(gl.BLEND);
+        }
+
+        // --- FPS Calculation ---
+        const fpsState = renderStateRef.current.fps;
+        const currentFps = 1.0 / delta;
+        fpsState.history.push(currentFps);
+        if (fpsState.history.length > 30) fpsState.history.shift();
+        if (now - fpsState.lastTime > 250) {
+            const smoothedFps = fpsState.history.reduce((a, b) => a + b, 0) / fpsState.history.length;
+            propsRef.current.onFpsUpdate(smoothedFps, 1.0);
+            fpsState.lastTime = now;
+        }
+      };
+
+      const currentActiveWindow = props.projectionWindow || window;
+      animationFrameIdRef.current = currentActiveWindow.requestAnimationFrame(render);
+    }
+
+    return () => {
+      if (animationFrameIdRef.current) {
+        const currentActiveWindow = props.projectionWindow || window;
+        currentActiveWindow.cancelAnimationFrame(animationFrameIdRef.current);
+        animationFrameIdRef.current = null;
+      }
+    };
+  }, [props.projectionWindow, props.isSessionLoading]);
+
   useEffect(() => {
     const gl = glRef.current;
     const canvas = canvasRef.current;
     if (!gl || !canvas) return;
-    
-    const dpr = window.devicePixelRatio || 1;
+
+    // Use correct window for devicePixelRatio (projection window or main window)
+    const currentWindow = props.projectionWindow || window;
+    const dpr = currentWindow.devicePixelRatio || 1;
     const parent = canvas.parentElement;
     if (!parent) return;
 
@@ -750,12 +933,12 @@ export function useWebGL(
         renderStateRef.current.fbos[modelFboName] = createFBO(width, height, true);
     }
   }, [props.projectionWindow, (canvasRef.current && canvasRef.current.parentElement ? canvasRef.current.parentElement.clientWidth : 0)]);
-  
+
   useEffect(() => {
     const gl = glRef.current;
     if (!gl) return;
     const { userImages, userVideos, userModels } = propsRef.current;
-    
+
     Object.keys(userImages).forEach(key => {
         if (!renderStateRef.current.imageTextures[key]) {
             const img = new Image();
@@ -777,7 +960,7 @@ export function useWebGL(
             img.src = userImages[key];
         }
     });
-    
+
     Object.keys(userVideos).forEach(key => {
         if (!renderStateRef.current.videoTextures[key]) {
             const texture = gl.createTexture();
