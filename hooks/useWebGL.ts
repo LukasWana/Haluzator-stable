@@ -629,7 +629,10 @@ export function useWebGL(
             gl.uniform1f(postProgram.uniforms.u_glowAmount, controls.glowAmount / 100.0);
             gl.uniform1f(postProgram.uniforms.u_chromaAmount, controls.chromaAmount / 100.0);
             gl.uniform1f(postProgram.uniforms.u_hueShift, controls.hueShift / 100.0);
-            const hasRenderableOverlay = (key: string | null) => !!(key && (_ui[key] || _uv[key] || _um[key]));
+            const hasRenderableOverlay = (key: string | null) => {
+                if (!key) return false;
+                return !!(_ui[key] || _uv[key] || _um[key] || renderStateRef.current.imageTextures[key] || renderStateRef.current.videoTextures[key] || renderStateRef.current.modelBuffers[key]);
+            };
             const anyOverlayVisible = hasRenderableOverlay(toMediaKey) || (isTransitioning && hasRenderableOverlay(fromMediaKey));
             const useLegacyMandala = controls.mandalaAffectsOverlay || !anyOverlayVisible;
             gl.uniform1f(postProgram.uniforms.u_mandalaSegments, Math.floor(controls.mandalaSegments));
@@ -816,7 +819,10 @@ export function useWebGL(
             gl.uniform1f(postProgram.uniforms.u_glowAmount, controls.glowAmount / 100.0);
             gl.uniform1f(postProgram.uniforms.u_chromaAmount, controls.chromaAmount / 100.0);
             gl.uniform1f(postProgram.uniforms.u_hueShift, controls.hueShift / 100.0);
-            const hasRenderableOverlay = (key: string | null) => !!(key && (_ui[key] || _uv[key] || _um[key]));
+            const hasRenderableOverlay = (key: string | null) => {
+                if (!key) return false;
+                return !!(_ui[key] || _uv[key] || _um[key] || renderStateRef.current.imageTextures[key] || renderStateRef.current.videoTextures[key] || renderStateRef.current.modelBuffers[key]);
+            };
             const anyOverlayVisible = hasRenderableOverlay(toMediaKey) || (isTransitioning && hasRenderableOverlay(fromMediaKey));
             const useLegacyMandala = controls.mandalaAffectsOverlay || !anyOverlayVisible;
             gl.uniform1f(postProgram.uniforms.u_mandalaSegments, Math.floor(controls.mandalaSegments));
