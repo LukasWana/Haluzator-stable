@@ -18,6 +18,9 @@ export interface ProgramInfo {
     u_chromaAmount: WebGLUniformLocation | null;
     u_hueShift: WebGLUniformLocation | null;
     u_mandalaSegments: WebGLUniformLocation | null;
+    u_enableMandala: WebGLUniformLocation | null;
+    u_applyMandalaToBase?: WebGLUniformLocation | null;
+    u_applyMandalaToOverlay?: WebGLUniformLocation | null;
     u_levelShadows: WebGLUniformLocation | null;
     u_levelMidtones: WebGLUniformLocation | null;
     u_levelHighlights: WebGLUniformLocation | null;
@@ -120,6 +123,7 @@ export type ControlSettings = {
     chromaAmount: number;
     hueShift: number;
     mandalaSegments: number;
+    mandalaAffectsOverlay: boolean;
     overlayOpacity: number;
     levelShadows: number;
     levelMidtones: number;

@@ -192,6 +192,22 @@ export const TRANSITION_SHADER_SRC = `
   }
 `;
 
+const MANDALA_UV_HELPER_SRC = `
+  const float TAU = 6.28318530718;
+
+  vec2 applyMandalaUv(vec2 uv, float segments) {
+    if (segments < 1.5) return uv;
+    float segs = floor(segments);
+    vec2 p = uv - 0.5;
+    float r = length(p);
+    float a = atan(p.y, p.x);
+    float sliceAngle = TAU / segs;
+    a = mod(a, sliceAngle);
+    a = min(a, sliceAngle - a);
+    return r * vec2(cos(a), sin(a)) + 0.5;
+  }
+`;
+
 export const COMPOSITING_SHADER_SRC = `
   precision highp float;
   uniform sampler2D u_baseTexture;
@@ -200,7 +216,11 @@ export const COMPOSITING_SHADER_SRC = `
   uniform bool u_hasOverlay;
   uniform float u_overlayOpacity;
   uniform float u_overlayZoom;
+  uniform float u_mandalaSegments;
+  uniform float u_applyMandalaToBase;
+  uniform float u_applyMandalaToOverlay;
   uniform vec3 iResolution;
+${MANDALA_UV_HELPER_SRC}
 
   vec4 getOverlayColor(sampler2D tex, vec2 texRes, vec2 uv_in) {
     if (texRes.x <= 0.0 || texRes.y <= 0.0) return vec4(0.0);
@@ -220,14 +240,17 @@ export const COMPOSITING_SHADER_SRC = `
 
   void main() {
     vec2 uv = gl_FragCoord.xy / iResolution.xy;
-    vec4 baseColor = texture2D(u_baseTexture, uv);
+    vec2 mandalaUv = applyMandalaUv(uv, u_mandalaSegments);
+    vec2 baseUv = mix(uv, mandalaUv, clamp(u_applyMandalaToBase, 0.0, 1.0));
+    vec2 overlayUv = mix(uv, mandalaUv, clamp(u_applyMandalaToOverlay, 0.0, 1.0));
+    vec4 baseColor = texture2D(u_baseTexture, baseUv);
     
     if (!u_hasOverlay) {
         gl_FragColor = baseColor;
         return;
     }
 
-    vec4 overlayColor = getOverlayColor(u_overlayTexture, u_overlayTextureResolution, uv);
+    vec4 overlayColor = getOverlayColor(u_overlayTexture, u_overlayTextureResolution, overlayUv);
     
     if (overlayColor.a == 0.0) {
         gl_FragColor = baseColor;
@@ -251,12 +274,12 @@ export const POST_PROCESSING_SHADER_SRC = `
   uniform float u_chromaAmount;
   uniform float u_hueShift;
   uniform float u_mandalaSegments;
+  uniform float u_enableMandala;
   uniform float u_levelShadows;
   uniform float u_levelMidtones;
   uniform float u_levelHighlights;
   uniform float u_saturation;
-
-  const float TAU = 6.28318530718;
+${MANDALA_UV_HELPER_SRC}
 
   vec3 rgb2hsl(vec3 color) {
       float minVal = min(min(color.r, color.g), color.b);
@@ -293,17 +316,9 @@ export const POST_PROCESSING_SHADER_SRC = `
   void main() {
     vec2 uv = gl_FragCoord.xy / iResolution.xy;
     vec2 texelSize = 1.0 / iResolution.xy;
-    
-    if (u_mandalaSegments >= 1.5) {
-        float segs = floor(u_mandalaSegments);
-        vec2 p = uv - 0.5;
-        float r = length(p);
-        float a = atan(p.y, p.x);
-        float slice_angle = TAU / segs;
-        a = mod(a, slice_angle);
-        a = min(a, slice_angle - a);
-        uv = r * vec2(cos(a), sin(a)) + 0.5;
-    }
+
+    float mandalaMask = clamp(u_enableMandala, 0.0, 1.0);
+    uv = mix(uv, applyMandalaUv(uv, u_mandalaSegments), mandalaMask);
 
     vec3 baseColor = texture2D(iChannel0, uv).rgb;
 

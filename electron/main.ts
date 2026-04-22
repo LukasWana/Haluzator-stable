@@ -9,14 +9,18 @@ const __dirname = path.dirname(__filename);
 let mainWindow: BrowserWindow | null = null;
 let projectionWindow: BrowserWindow | null = null;
 
+// Ensure WebMIDI is available in Electron renderer processes.
+app.commandLine.appendSwitch('enable-blink-features', 'WebMIDI,WebMIDIPortDiscovery');
+
 const createWindow = () => {
   // Create the browser window
   const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
+  const devServerUrl = process.env.ELECTRON_RENDERER_URL;
   const iconPath = isDev
     ? path.join(__dirname, '..', 'assets', 'icon.png')
     : path.join(app.getAppPath(), 'assets', 'icon.png');
 
-  mainWindow = new BrowserWindow({
+  const createdWindow = new BrowserWindow({
     width: 1920,
     height: 1080,
     webPreferences: {
@@ -29,11 +33,21 @@ const createWindow = () => {
     show: false,
     autoHideMenuBar: true, // Schová horní systémové menu
   });
+  mainWindow = createdWindow;
+
+  // Allow required runtime permissions from the renderer.
+  createdWindow.webContents.session.setPermissionRequestHandler((_webContents, permission, callback) => {
+    if (permission === 'midi' || permission === 'midiSysex' || permission === 'media') {
+      callback(true);
+      return;
+    }
+    callback(false);
+  });
 
   // Load the app
-  if (isDev) {
-    mainWindow.loadURL('http://localhost:3000');
-    mainWindow.webContents.openDevTools();
+  if (isDev && devServerUrl) {
+    createdWindow.loadURL(devServerUrl);
+    createdWindow.webContents.openDevTools();
   } else {
     // In production, files are packaged
     // __dirname points to dist-electron/ in packaged app
@@ -41,7 +55,7 @@ const createWindow = () => {
     const indexPath = path.join(__dirname, '..', 'dist', 'index.html');
 
     // Load the file - loadFile handles asar archives automatically
-    mainWindow.loadFile(indexPath).catch((error) => {
+    createdWindow.loadFile(indexPath).catch((error) => {
       console.error('Failed to load index.html:', error);
       console.error('Error details:', error.message, error.code);
 
@@ -50,25 +64,25 @@ const createWindow = () => {
       const altPath = path.join(appPath, 'dist', 'index.html');
       console.log('Trying alternative path:', altPath);
 
-      mainWindow.loadFile(altPath).catch((altError) => {
+      createdWindow.loadFile(altPath).catch((altError) => {
         console.error('Alternative path also failed:', altError);
       });
     });
   }
 
   // Show window when ready
-  mainWindow.once('ready-to-show', () => {
-    mainWindow.show();
+  createdWindow.once('ready-to-show', () => {
+    createdWindow.show();
   });
 
   // Handle loading errors (only log, don't open DevTools in production)
-  mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
+  createdWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
     console.error('Failed to load:', errorCode, errorDescription);
     // DevTools not opened in production - errors are logged to console only
   });
 
   // Handle window closed
-  mainWindow.on('closed', () => {
+  createdWindow.on('closed', () => {
     // Dereference the window object
   });
 };

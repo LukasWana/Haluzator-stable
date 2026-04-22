@@ -76,6 +76,14 @@ export const Controls: React.FC = () => {
                   <span className="slider-value">{currentControls.mandalaSegments}</span>
                 </div>
                 <input type="range" min="1" max="16" step="1" value={currentControls.mandalaSegments} onChange={e => handleControlChange('mandalaSegments', parseInt(e.target.value))} title="L/;" />
+                <div className="slider-label-container">
+                  <label>APPLY MANDALA TO OVERLAY</label>
+                  <input
+                    type="checkbox"
+                    checked={currentControls.mandalaAffectsOverlay}
+                    onChange={e => handleControlChange('mandalaAffectsOverlay', e.target.checked)}
+                  />
+                </div>
               </div>
               <div className="slider-group">
                 <div className="slider-label-container">

@@ -23,6 +23,7 @@ export const defaultControls: ControlSettings = {
     chromaAmount: 0,
     hueShift: 0,
     mandalaSegments: 1,
+    mandalaAffectsOverlay: true,
     overlayOpacity: 100,
     levelShadows: 0,
     levelMidtones: 50,

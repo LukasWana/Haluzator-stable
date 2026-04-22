@@ -157,15 +157,13 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
         sanitizedData.shaderSequences = resizeOnLoad(sanitizedData.shaderSequences, null);
         sanitizedData.mediaSequences = resizeOnLoad(sanitizedData.mediaSequences, () => ({ key: null }));
 
-        if (!sanitizedData.pageControls || sanitizedData.pageControls.length !== NUM_PAGES) {
-            const newPageControls = createDefaultPageControls();
-            if (sanitizedData.pageControls) {
-                for(let i = 0; i < Math.min(sanitizedData.pageControls.length, NUM_PAGES); i++) {
-                    newPageControls[i] = { ...defaultControls, ...sanitizedData.pageControls[i] };
-                }
+        const mergedPageControls = createDefaultPageControls();
+        if (sanitizedData.pageControls) {
+            for (let i = 0; i < Math.min(sanitizedData.pageControls.length, NUM_PAGES); i++) {
+                mergedPageControls[i] = { ...defaultControls, ...sanitizedData.pageControls[i] };
             }
-            sanitizedData.pageControls = newPageControls;
         }
+        sanitizedData.pageControls = mergedPageControls;
 
         setSessionLoadingDetails('Merging library items...');
 

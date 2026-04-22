@@ -65,14 +65,14 @@ export const loadState = () => {
         savedState.shaderSequences = resizeOnLoad(savedState.shaderSequences || [], null);
         savedState.mediaSequences = resizeOnLoad(savedState.mediaSequences || [], () => ({ key: null }));
 
-        // Ensure pageControls has the correct number of pages
-        if (savedState.pageControls && savedState.pageControls.length !== NUM_PAGES) {
-            const newPageControls = createDefaultPageControls();
-            for(let i = 0; i < Math.min(savedState.pageControls.length, NUM_PAGES); i++) {
-                newPageControls[i] = { ...defaultControls, ...savedState.pageControls[i] };
+        // Always merge page controls with defaults so new fields are backfilled.
+        const mergedPageControls = createDefaultPageControls();
+        if (savedState.pageControls) {
+            for (let i = 0; i < Math.min(savedState.pageControls.length, NUM_PAGES); i++) {
+                mergedPageControls[i] = { ...defaultControls, ...savedState.pageControls[i] };
             }
-            savedState.pageControls = newPageControls;
         }
+        savedState.pageControls = mergedPageControls;
 
         return savedState;
     } catch (error) {

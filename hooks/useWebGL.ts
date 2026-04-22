@@ -148,6 +148,9 @@ export function useWebGL(
             u_chromaAmount: gl.getUniformLocation(program, "u_chromaAmount"),
             u_hueShift: gl.getUniformLocation(program, "u_hueShift"),
             u_mandalaSegments: gl.getUniformLocation(program, "u_mandalaSegments"),
+            u_enableMandala: gl.getUniformLocation(program, "u_enableMandala"),
+            u_applyMandalaToBase: gl.getUniformLocation(program, "u_applyMandalaToBase"),
+            u_applyMandalaToOverlay: gl.getUniformLocation(program, "u_applyMandalaToOverlay"),
             u_levelShadows: gl.getUniformLocation(program, "u_levelShadows"),
             u_levelMidtones: gl.getUniformLocation(program, "u_levelMidtones"),
             u_levelHighlights: gl.getUniformLocation(program, "u_levelHighlights"),
@@ -186,7 +189,7 @@ export function useWebGL(
   const renderScene = useCallback((shaderKey: string, mediaKey: string | null, targetFbo: FBOInfo, time: number, modelSettings: ModelSettings | null) => {
     const gl = glRef.current;
     if (!gl) return;
-    const { shaders, userImages, userVideos, userModels, audioDataRef, audioInfluence, speed, zoom, overlayOpacity, isTransitioning, transitionProgress } = propsRef.current;
+    const { shaders, userImages, userVideos, userModels, audioDataRef, audioInfluence, speed, zoom, overlayOpacity, isTransitioning, transitionProgress, mandalaSegments, mandalaAffectsOverlay } = propsRef.current;
 
     // --- 1. RENDER BASE SHADER ---
     const baseFbo = renderStateRef.current.fbos.baseFbo;
@@ -464,6 +467,8 @@ export function useWebGL(
     gl.vertexAttribPointer(compositingProgram.attribs.a_position, 2, gl.FLOAT, false, 0, 0);
 
     gl.uniform3f(compositingProgram.uniforms.iResolution, targetFbo.width, targetFbo.height, 1);
+    const hasMandala = Math.floor(mandalaSegments) >= 2;
+    gl.uniform1f(compositingProgram.uniforms.u_mandalaSegments, Math.floor(mandalaSegments));
 
     // Bind base texture (from step 1)
     gl.activeTexture(gl.TEXTURE0);
@@ -476,6 +481,11 @@ export function useWebGL(
 
     const hasOverlay = !!overlayTexture;
     gl.uniform1i(compositingProgram.uniforms.u_hasOverlay, hasOverlay ? 1 : 0);
+    // Keep legacy 1:1 look when there is no overlay.
+    // Base-only mandala mode is needed only while compositing with an overlay.
+    const useBaseOnlyMandala = hasMandala && !mandalaAffectsOverlay && hasOverlay;
+    gl.uniform1f(compositingProgram.uniforms.u_applyMandalaToBase, useBaseOnlyMandala ? 1.0 : 0.0);
+    gl.uniform1f(compositingProgram.uniforms.u_applyMandalaToOverlay, 0.0);
 
     gl.activeTexture(gl.TEXTURE1); // Activate unit 1 for the overlay texture
     if (hasOverlay) {
@@ -619,7 +629,11 @@ export function useWebGL(
             gl.uniform1f(postProgram.uniforms.u_glowAmount, controls.glowAmount / 100.0);
             gl.uniform1f(postProgram.uniforms.u_chromaAmount, controls.chromaAmount / 100.0);
             gl.uniform1f(postProgram.uniforms.u_hueShift, controls.hueShift / 100.0);
+            const hasRenderableOverlay = (key: string | null) => !!(key && (_ui[key] || _uv[key] || _um[key]));
+            const anyOverlayVisible = hasRenderableOverlay(toMediaKey) || (isTransitioning && hasRenderableOverlay(fromMediaKey));
+            const useLegacyMandala = controls.mandalaAffectsOverlay || !anyOverlayVisible;
             gl.uniform1f(postProgram.uniforms.u_mandalaSegments, Math.floor(controls.mandalaSegments));
+            gl.uniform1f(postProgram.uniforms.u_enableMandala, useLegacyMandala ? 1.0 : 0.0);
             gl.uniform1f(postProgram.uniforms.u_levelShadows, controls.levelShadows / 100.0);
             gl.uniform1f(postProgram.uniforms.u_levelMidtones, controls.levelMidtones / 100.0);
             gl.uniform1f(postProgram.uniforms.u_levelHighlights, 1.0 - (controls.levelHighlights / 100.0));
@@ -802,7 +816,11 @@ export function useWebGL(
             gl.uniform1f(postProgram.uniforms.u_glowAmount, controls.glowAmount / 100.0);
             gl.uniform1f(postProgram.uniforms.u_chromaAmount, controls.chromaAmount / 100.0);
             gl.uniform1f(postProgram.uniforms.u_hueShift, controls.hueShift / 100.0);
+            const hasRenderableOverlay = (key: string | null) => !!(key && (_ui[key] || _uv[key] || _um[key]));
+            const anyOverlayVisible = hasRenderableOverlay(toMediaKey) || (isTransitioning && hasRenderableOverlay(fromMediaKey));
+            const useLegacyMandala = controls.mandalaAffectsOverlay || !anyOverlayVisible;
             gl.uniform1f(postProgram.uniforms.u_mandalaSegments, Math.floor(controls.mandalaSegments));
+            gl.uniform1f(postProgram.uniforms.u_enableMandala, useLegacyMandala ? 1.0 : 0.0);
             gl.uniform1f(postProgram.uniforms.u_levelShadows, controls.levelShadows / 100.0);
             gl.uniform1f(postProgram.uniforms.u_levelMidtones, controls.levelMidtones / 100.0);
             gl.uniform1f(postProgram.uniforms.u_levelHighlights, 1.0 - (controls.levelHighlights / 100.0));

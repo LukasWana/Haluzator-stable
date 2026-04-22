@@ -7,13 +7,11 @@ import { useSequencer, usePlayback } from '../contexts/SequencerAndPlaybackProvi
 import { NUM_PAGES, defaultControls } from '../constants';
 import type { ControlSettings } from '../types';
 
-declare var WebMidi: any;
-
 export const useInputHandler = () => {
     const { isAddShaderModalOpen, isAddMediaModalOpen, isHelpModalOpen } = useUI();
-    const { 
+    const {
         currentPage, pageControls, sequencerSteps, editableStep,
-        handleControlChange, handlePageChange, setEditableStep, 
+        handleControlChange, handlePageChange, setEditableStep,
         handleStepClick, shiftLoop,
         setLoopStart, setLoopEnd, toggleLoop
     } = useSequencer();
@@ -70,8 +68,8 @@ export const useInputHandler = () => {
 
             const sequencerKeys = 'qwertyui';
             const stepIndex = sequencerKeys.indexOf(key);
-            if (stepIndex !== -1) { 
-                e.preventDefault(); 
+            if (stepIndex !== -1) {
+                e.preventDefault();
                 triggerLiveVjStep(stepIndex);
             }
 
@@ -89,31 +87,68 @@ export const useInputHandler = () => {
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [isAddShaderModalOpen, isAddMediaModalOpen, isHelpModalOpen, pageControls, currentPage, editableStep, sequencerSteps, handleControlChange, handlePageChange, setEditableStep, handleStepClick, togglePlay, shiftLoop, triggerLiveVjStep, setSelectedItem, defaultShaderKeys, userShaders]);
-    
+
     // MIDI Initialization and Handling
     useEffect(() => {
         const enableMidi = async () => {
             try {
-                await WebMidi.enable();
-                midiAccessRef.current = WebMidi;
-                setMidiInputs(WebMidi.inputs);
-                const nanoKontrol = WebMidi.inputs.find(input => input.name.toLowerCase().includes('nanokontrol'));
-                if (nanoKontrol) setSelectedMidiInputId(nanoKontrol.id);
-                WebMidi.addListener("connected", () => setMidiInputs(WebMidi.inputs));
-                WebMidi.addListener("disconnected", () => setMidiInputs(WebMidi.inputs));
-            } catch (err) { console.error("Could not enable WebMidi.", err); }
+                const webMidiGlobal = (window as any).WebMidi;
+                if (webMidiGlobal?.enable) {
+                    await webMidiGlobal.enable();
+                    midiAccessRef.current = webMidiGlobal;
+                    setMidiInputs(webMidiGlobal.inputs);
+                    const nanoKontrol = webMidiGlobal.inputs.find(input => input.name?.toLowerCase().includes('nanokontrol'));
+                    setSelectedMidiInputId((nanoKontrol || webMidiGlobal.inputs[0])?.id || '');
+                    webMidiGlobal.addListener("connected", () => setMidiInputs(webMidiGlobal.inputs));
+                    webMidiGlobal.addListener("disconnected", () => setMidiInputs(webMidiGlobal.inputs));
+                    return;
+                }
+
+                if (navigator.requestMIDIAccess) {
+                    const access = await navigator.requestMIDIAccess();
+                    midiAccessRef.current = access;
+                    const inputs = Array.from(access.inputs.values());
+                    setMidiInputs(inputs);
+                    const nanoKontrol = inputs.find(input => input.name?.toLowerCase().includes('nanokontrol'));
+                    setSelectedMidiInputId((nanoKontrol || inputs[0])?.id || '');
+                    access.onstatechange = () => {
+                        setMidiInputs(Array.from(access.inputs.values()));
+                    };
+                    return;
+                }
+
+                console.error("MIDI is not supported in this environment.", {
+                    hasWebMidiGlobal: !!(window as any).WebMidi,
+                    hasRequestMIDIAccess: !!navigator.requestMIDIAccess,
+                });
+            } catch (err) {
+                console.error("Could not enable MIDI.", err, {
+                    hasWebMidiGlobal: !!(window as any).WebMidi,
+                    hasRequestMIDIAccess: !!navigator.requestMIDIAccess,
+                });
+            }
         };
         enableMidi();
-        return () => { if (midiAccessRef.current) { WebMidi.removeListener(); WebMidi.disable(); }};
+        return () => {
+            if (!midiAccessRef.current) return;
+            if (typeof midiAccessRef.current.removeListener === 'function') {
+                midiAccessRef.current.removeListener();
+            }
+            if (typeof midiAccessRef.current.disable === 'function') {
+                midiAccessRef.current.disable();
+            } else if ('onstatechange' in midiAccessRef.current) {
+                midiAccessRef.current.onstatechange = null;
+            }
+        };
     }, [setMidiInputs, setSelectedMidiInputId]);
-    
+
     useEffect(() => {
         const ccMap: Record<number, { name: keyof ControlSettings; max?: number, min?: number }> = {
             16: { name: 'levelHighlights' }, 17: { name: 'levelMidtones' }, 18: { name: 'levelShadows' },
             19: { name: 'saturation' }, 20: { name: 'hueShift' }, 21: { name: 'glowAmount' },
-            22: { name: 'zoom' }, 23: { name: 'mandalaSegments', max: 16, min: 1 },
-            0: { name: 'overlayOpacity' }, 1: { name: 'blurAmount' }, 2: { name: 'chromaAmount' },
-            3: { name: 'speed' }, 5: { name: 'stepsPerMinute', max: 120, min: 6 }, 6: { name: 'audioInfluence' },
+            22: { name: 'zoom' }, 23: { name: 'mandalaSegments', max: 64, min: 1 },
+            0: { name: 'overlayOpacity' }, 1: { name: 'blurAmount' }, 12: { name: 'chromaAmount' },
+            3: { name: 'speed' }, 5: { name: 'stepsPerMinute', max: 180, min: 3 }, 6: { name: 'audioInfluence' },
         };
         const handleMidiMessage = (e) => {
             const [status, ccNumber, ccValue] = e.message.data;
@@ -127,6 +162,11 @@ export const useInputHandler = () => {
                     if (ccNumber === 32) { setLoopStart(editableStep); return; }
                     if (ccNumber === 33) { setLoopEnd(editableStep); return; }
                     if (ccNumber === 34) { toggleLoop(); return; }
+                    if (ccNumber === 35) {
+                        const controls = pageControls[currentPage] || defaultControls;
+                        handleControlChange('mandalaAffectsOverlay', !controls.mandalaAffectsOverlay);
+                        return;
+                    }
                     if (ccNumber === 48) { shiftLoop('left'); return; }
                     if (ccNumber === 49) { shiftLoop('right'); return; }
                 }
@@ -139,10 +179,18 @@ export const useInputHandler = () => {
             }
         };
         if (midiAccessRef.current && selectedMidiInputId) {
-            midiInputs.forEach(input => input.removeListener());
-            const currentInput = WebMidi.getInputById(selectedMidiInputId);
-            if (currentInput) currentInput.addListener("midimessage", handleMidiMessage);
-            return () => { if (currentInput) currentInput.removeListener("midimessage", handleMidiMessage); };
+            const isWebMidiApi = typeof midiAccessRef.current.getInputById === 'function';
+            if (isWebMidiApi) {
+                midiInputs.forEach(input => input.removeListener?.());
+                const currentInput = midiAccessRef.current.getInputById(selectedMidiInputId);
+                if (currentInput) currentInput.addListener("midimessage", handleMidiMessage);
+                return () => { if (currentInput) currentInput.removeListener?.("midimessage", handleMidiMessage); };
+            }
+
+            midiInputs.forEach(input => { input.onmidimessage = null; });
+            const currentInput = midiInputs.find(input => input.id === selectedMidiInputId);
+            if (currentInput) currentInput.onmidimessage = handleMidiMessage;
+            return () => { if (currentInput) currentInput.onmidimessage = null; };
         }
-    }, [selectedMidiInputId, midiInputs, currentPage, editableStep, togglePlay, toggleAudio, handlePageChange, triggerLiveVjStep, setLoopStart, setLoopEnd, toggleLoop, shiftLoop, handleControlChange]);
+    }, [selectedMidiInputId, midiInputs, currentPage, editableStep, pageControls, togglePlay, toggleAudio, handlePageChange, triggerLiveVjStep, setLoopStart, setLoopEnd, toggleLoop, shiftLoop, handleControlChange]);
 };
