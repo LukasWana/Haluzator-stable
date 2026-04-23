@@ -14,7 +14,7 @@ export const Controls: React.FC = () => {
 
     return (
         <div className="controls">
-            <div className="sliders-container">
+            <div className="sliders-container stagger-children slide-up" style={{ '--stagger-base': '0.45s' } as React.CSSProperties}>
               <div className="slider-group">
                 <div className="slider-label-container">
                   <label>TEMPO</label>

@@ -29,7 +29,7 @@ export const Header: React.FC<HeaderProps> = ({ fileInputRef, canvasRef, canvasW
         </div>
       </div>
       <div className="session-controls">
-        <div className="header-actions">
+        <div className="header-actions stagger-children" style={{ '--stagger-base': '0.2s' } as React.CSSProperties}>
           <div className="fps-display">{fpsDisplay}</div>
           <button className={`header-icon-button ${isPlaying ? 'active' : ''}`} onClick={togglePlay} title="Play/Pause (Spacebar)">
             {isPlaying ? '❚❚' : '▶'}
@@ -55,7 +55,7 @@ export const Header: React.FC<HeaderProps> = ({ fileInputRef, canvasRef, canvasW
           </button>
         </div>
         <div className="header-separator"></div>
-        <div className="header-actions">
+        <div className="header-actions stagger-children" style={{ '--stagger-base': '0.35s' } as React.CSSProperties}>
           <button className="header-icon-button" onClick={handleSaveSession} title="Save Session">
             <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"></path></svg>
           </button>
@@ -63,7 +63,7 @@ export const Header: React.FC<HeaderProps> = ({ fileInputRef, canvasRef, canvasW
             <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 6h-8l-2-2H4c-1.11 0-2 .89-2 2v12c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zm-1 8h-3v3h-2v-3h-3v-2h3V9h2v3h3v2z"></path></svg>
           </button>
         </div>
-        <div className="panel-toggles">
+        <div className="panel-toggles stagger-children" style={{ '--stagger-base': '0.45s' } as React.CSSProperties}>
             <button className={`header-icon-button ${!isSequencerVisible ? 'active' : ''}`} onClick={() => setIsSequencerVisible(p => !p)} title={isSequencerVisible ? "Hide Sequencer" : "Show Sequencer"}>
                 <svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 3h18v4H3zm0 7h18v4H3zm0 7h18v4H3z"></path></svg>
             </button>

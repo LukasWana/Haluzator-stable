@@ -61,6 +61,7 @@ export function App() {
                 // Check if it's still loaded before hiding, to avoid race conditions
                 if (preloader.classList.contains('loaded')) {
                     preloader.style.display = 'none';
+                    document.body.classList.add('app-loaded');
                 }
                 preloader.removeEventListener('transitionend', onTransitionEnd);
             };
@@ -87,7 +88,9 @@ export function App() {
   
   return (
     <>
-      <Header fileInputRef={fileInputRef} canvasRef={canvasRef} canvasWrapperRef={canvasWrapperRef} htmlOverlayRef={htmlOverlayRef} />
+      <div className="gui-element header-anim">
+        <Header fileInputRef={fileInputRef} canvasRef={canvasRef} canvasWrapperRef={canvasWrapperRef} htmlOverlayRef={htmlOverlayRef} />
+      </div>
       
       <input
         type="file"
@@ -101,7 +104,7 @@ export function App() {
         className={`app-container ${!isRightPanelVisible ? 'right-panel-hidden' : ''}`}
       >
         <div className="main-content">
-          <div ref={canvasWrapperRef} className={`canvas-wrapper ${projectionWindow ? 'projection-mode' : ''} ${isFullscreen ? 'fullscreen' : ''}`}>
+          <div ref={canvasWrapperRef} className={`canvas-wrapper gui-element canvas-anim ${projectionWindow ? 'projection-mode' : ''} ${isFullscreen ? 'fullscreen' : ''}`}>
             <canvas id="shader-canvas" ref={canvasRef}></canvas>
             <HtmlOverlay ref={htmlOverlayRef} />
             <ShaderErrorDisplay activeShaderKey={activeShaderToRender} />
@@ -116,7 +119,7 @@ export function App() {
                 </div>
             )}
           </div>
-          <div className="controls-sequencer-wrapper">
+          <div className="controls-sequencer-wrapper gui-element controls-anim">
             {isSequencerVisible && (
               <>
                 <SequencerToolbar />
@@ -126,7 +129,7 @@ export function App() {
             {isControlsVisible && <Controls />}
           </div>
         </div>
-        <RightPanel />
+        {isRightPanelVisible && <RightPanel />}
       </div>
 
       <AddShaderModal />

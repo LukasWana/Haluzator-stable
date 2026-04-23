@@ -82,6 +82,8 @@ export function useWebGL(
       time: 0,
       lastFrameTime: Date.now(),
       positionBuffer: null as WebGLBuffer | null,
+      videoFrameDirty: {} as Record<string, boolean>,
+      lastVideoTimes: {} as Record<string, number>,
       fps: {
         lastTime: Date.now(),
         history: [] as number[],
@@ -90,7 +92,7 @@ export function useWebGL(
 
   const propsRef = useRef({ ...props, shaders, userImages, userVideos, userModels, audioDataRef, onShaderError, onFpsUpdate });
   useEffect(() => {
-    propsRef.current = { ...props, shaders, userImages, userVideos, userModels, audioDataRef, onShaderError, onFpsUpdate };
+    Object.assign(propsRef.current, props, { shaders, userImages, userVideos, userModels, audioDataRef, onShaderError, onFpsUpdate });
   });
 
   const getProgram = useCallback((gl: WebGLRenderingContext, key: string, vsSrc: string, fsSrc: string): ProgramInfo | null => {
@@ -508,6 +510,7 @@ export function useWebGL(
 
   useEffect(() => {
     const canvas = canvasRef.current;
+    const currentActiveWindow = props.projectionWindow || window;
     if (!canvas) return;
     const gl = canvas.getContext('webgl', { antialias: true, preserveDrawingBuffer: false });
     if (!gl) return;
@@ -566,12 +569,28 @@ export function useWebGL(
         [fromMediaKey, toMediaKey].filter(Boolean).forEach(key => {
             const videoInfo = propsRef.current.userVideos[key!];
             if (videoInfo && videoInfo.element.readyState >= videoInfo.element.HAVE_METADATA) {
-                const videoTexture = renderStateRef.current.videoTextures[key!];
-                gl.bindTexture(gl.TEXTURE_2D, videoTexture);
-                gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, videoInfo.element);
-                const { videoWidth, videoHeight } = videoInfo.element;
-                if (videoWidth > 0 && videoHeight > 0) {
-                    renderStateRef.current.mediaDimensions[key!] = { width: videoWidth, height: videoHeight };
+                const el = videoInfo.element;
+                let isDirty = false;
+
+                if ('requestVideoFrameCallback' in el) {
+                    isDirty = renderStateRef.current.videoFrameDirty[key!];
+                } else {
+                    if (renderStateRef.current.lastVideoTimes[key!] !== el.currentTime) {
+                        isDirty = true;
+                        renderStateRef.current.lastVideoTimes[key!] = el.currentTime;
+                    }
+                }
+
+                if (isDirty) {
+                    const videoTexture = renderStateRef.current.videoTextures[key!];
+                    gl.bindTexture(gl.TEXTURE_2D, videoTexture);
+                    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, el);
+                    renderStateRef.current.videoFrameDirty[key!] = false;
+                    
+                    const { videoWidth, videoHeight } = el;
+                    if (videoWidth > 0 && videoHeight > 0) {
+                        renderStateRef.current.mediaDimensions[key!] = { width: videoWidth, height: videoHeight };
+                    }
                 }
             }
         });
@@ -693,201 +712,13 @@ export function useWebGL(
 
     return () => {
         if (animationFrameIdRef.current) {
-            // Use the window context where the loop was started to cancel it
-            const currentActiveWindow = propsRef.current.projectionWindow || window;
             currentActiveWindow.cancelAnimationFrame(animationFrameIdRef.current);
         }
         animationFrameIdRef.current = null;
     };
   }, [canvasRef, getProgram, renderScene, props.projectionWindow]);
 
-  // Restart render loop when projection window changes
-  useEffect(() => {
-    // Cancel existing animation frame
-    if (animationFrameIdRef.current) {
-      const oldWindow = props.projectionWindow || window;
-      oldWindow.cancelAnimationFrame(animationFrameIdRef.current);
-      animationFrameIdRef.current = null;
-    }
 
-    // Restart render loop with new window context
-    if (canvasRef.current && glRef.current && !props.isSessionLoading) {
-      const render = () => {
-        const currentActiveWindow = propsRef.current.projectionWindow || window;
-        animationFrameIdRef.current = currentActiveWindow.requestAnimationFrame(render);
-
-        if (propsRef.current.isSessionLoading || !glRef.current || glRef.current.isContextLost()) {
-            return;
-        }
-
-        const gl = glRef.current;
-        const now = Date.now();
-        const delta = (now - renderStateRef.current.lastFrameTime) / 1000.0;
-        renderStateRef.current.time += delta;
-        renderStateRef.current.lastFrameTime = now;
-
-        const {
-            fromShaderKey, toShaderKey, fromMediaKey, toMediaKey, isTransitioning, transitionProgress,
-            fromModelSettings, toModelSettings,
-            projectionWindow: _p,
-            isSessionLoading: _l,
-            isPlaying: _ip,
-            shaders: _s,
-            userImages: _ui,
-            userVideos: _uv,
-            userModels: _um,
-            audioDataRef: _a,
-            onShaderError: _e,
-            onFpsUpdate: _f,
-            ...controls
-        } = propsRef.current;
-
-        const { fbos } = renderStateRef.current;
-        const sceneFboA = fbos.sceneFboA;
-        const sceneFboB = fbos.sceneFboB;
-        if (!sceneFboA || !sceneFboB) return;
-
-        // --- Scene Rendering Phase ---
-        renderScene(toShaderKey, toMediaKey, sceneFboB, renderStateRef.current.time, toModelSettings);
-        if (isTransitioning) {
-            renderScene(fromShaderKey, fromMediaKey, sceneFboA, renderStateRef.current.time, fromModelSettings);
-        }
-
-        // Update video textures
-        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
-        [fromMediaKey, toMediaKey].filter(Boolean).forEach(key => {
-            const videoInfo = propsRef.current.userVideos[key!];
-            if (videoInfo && videoInfo.element.readyState >= videoInfo.element.HAVE_METADATA) {
-                const videoTexture = renderStateRef.current.videoTextures[key!];
-                gl.bindTexture(gl.TEXTURE_2D, videoTexture);
-                gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, videoInfo.element);
-                const { videoWidth, videoHeight } = videoInfo.element;
-                if (videoWidth > 0 && videoHeight > 0) {
-                    renderStateRef.current.mediaDimensions[key!] = { width: videoWidth, height: videoHeight };
-                }
-            }
-        });
-        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
-
-        // --- Composition Phase ---
-        const postFbo = fbos.postFbo;
-        if (!postFbo) return;
-
-        gl.bindFramebuffer(gl.FRAMEBUFFER, postFbo.framebuffer);
-        gl.viewport(0, 0, postFbo.width, postFbo.height);
-
-        const transitionProgram = getProgram(gl, '__TRANSITION__', VERTEX_SHADER_SRC, TRANSITION_SHADER_SRC);
-        if (transitionProgram) {
-            gl.useProgram(transitionProgram.program);
-
-            gl.enableVertexAttribArray(transitionProgram.attribs.a_position);
-            gl.bindBuffer(gl.ARRAY_BUFFER, renderStateRef.current.positionBuffer);
-            gl.vertexAttribPointer(transitionProgram.attribs.a_position, 2, gl.FLOAT, false, 0, 0);
-
-            gl.activeTexture(gl.TEXTURE0);
-            gl.bindTexture(gl.TEXTURE_2D, isTransitioning ? sceneFboA.texture : sceneFboB.texture);
-            gl.uniform1i(transitionProgram.uniforms.u_fromTexture, 0);
-
-            gl.activeTexture(gl.TEXTURE1);
-            gl.bindTexture(gl.TEXTURE_2D, sceneFboB.texture);
-            gl.uniform1i(transitionProgram.uniforms.u_toTexture, 1);
-
-            gl.uniform1f(transitionProgram.uniforms.u_progress, isTransitioning ? transitionProgress : 1.0);
-            gl.uniform3f(transitionProgram.uniforms.iResolution, postFbo.width, postFbo.height, 1);
-            gl.drawArrays(gl.TRIANGLES, 0, 6);
-
-            gl.disableVertexAttribArray(transitionProgram.attribs.a_position);
-            gl.bindBuffer(gl.ARRAY_BUFFER, null);
-        }
-
-        // --- Post-processing Phase ---
-        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-        gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
-        const postProgram = getProgram(gl, '__POST__', VERTEX_SHADER_SRC, POST_PROCESSING_SHADER_SRC);
-        if(postProgram) {
-            gl.useProgram(postProgram.program);
-
-            gl.enableVertexAttribArray(postProgram.attribs.a_position);
-            gl.bindBuffer(gl.ARRAY_BUFFER, renderStateRef.current.positionBuffer);
-            gl.vertexAttribPointer(postProgram.attribs.a_position, 2, gl.FLOAT, false, 0, 0);
-
-            gl.activeTexture(gl.TEXTURE0);
-            gl.bindTexture(gl.TEXTURE_2D, postFbo.texture);
-            gl.uniform1i(postProgram.uniforms.iChannel0, 0);
-            gl.uniform3f(postProgram.uniforms.iResolution, gl.canvas.width, gl.canvas.height, 1);
-            gl.uniform1f(postProgram.uniforms.u_blurAmount, controls.blurAmount / 100.0);
-            gl.uniform1f(postProgram.uniforms.u_glowAmount, controls.glowAmount / 100.0);
-            gl.uniform1f(postProgram.uniforms.u_chromaAmount, controls.chromaAmount / 100.0);
-            gl.uniform1f(postProgram.uniforms.u_hueShift, controls.hueShift / 100.0);
-            const hasRenderableOverlay = (key: string | null) => {
-                if (!key) return false;
-                return !!(_ui[key] || _uv[key] || _um[key] || renderStateRef.current.imageTextures[key] || renderStateRef.current.videoTextures[key] || renderStateRef.current.modelBuffers[key]);
-            };
-            const anyOverlayVisible = hasRenderableOverlay(toMediaKey) || (isTransitioning && hasRenderableOverlay(fromMediaKey));
-            const useLegacyMandala = controls.mandalaAffectsOverlay || !anyOverlayVisible;
-            gl.uniform1f(postProgram.uniforms.u_mandalaSegments, Math.floor(controls.mandalaSegments));
-            gl.uniform1f(postProgram.uniforms.u_enableMandala, useLegacyMandala ? 1.0 : 0.0);
-            gl.uniform1f(postProgram.uniforms.u_levelShadows, controls.levelShadows / 100.0);
-            gl.uniform1f(postProgram.uniforms.u_levelMidtones, controls.levelMidtones / 100.0);
-            gl.uniform1f(postProgram.uniforms.u_levelHighlights, 1.0 - (controls.levelHighlights / 100.0));
-            gl.uniform1f(postProgram.uniforms.u_saturation, controls.saturation / 100.0);
-            gl.drawArrays(gl.TRIANGLES, 0, 6);
-
-            gl.disableVertexAttribArray(postProgram.attribs.a_position);
-            gl.bindBuffer(gl.ARRAY_BUFFER, null);
-        }
-
-        // --- Particle Overlay Phase ---
-        if (controls.particles > 0) {
-            gl.enable(gl.BLEND);
-            gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
-
-            const particleProgram = getProgram(gl, '__PARTICLES__', VERTEX_SHADER_SRC, PARTICLE_OVERLAY_SHADER_SRC);
-            if (particleProgram) {
-                gl.useProgram(particleProgram.program);
-
-                gl.enableVertexAttribArray(particleProgram.attribs.a_position);
-                gl.bindBuffer(gl.ARRAY_BUFFER, renderStateRef.current.positionBuffer);
-                gl.vertexAttribPointer(particleProgram.attribs.a_position, 2, gl.FLOAT, false, 0, 0);
-
-                gl.uniform3f(particleProgram.uniforms.iResolution, gl.canvas.width, gl.canvas.height, 1);
-                gl.uniform1f(particleProgram.uniforms.iTime, renderStateRef.current.time);
-                gl.uniform4f(particleProgram.uniforms.iAudio, _a.current.low, _a.current.mid, _a.current.high, _a.current.overall * (controls.audioInfluence / 100.0));
-                gl.uniform1f(particleProgram.uniforms.u_particleAmount, controls.particles / 100.0);
-
-                gl.drawArrays(gl.TRIANGLES, 0, 6);
-
-                gl.disableVertexAttribArray(particleProgram.attribs.a_position);
-                gl.bindBuffer(gl.ARRAY_BUFFER, null);
-            }
-
-            gl.disable(gl.BLEND);
-        }
-
-        // --- FPS Calculation ---
-        const fpsState = renderStateRef.current.fps;
-        const currentFps = 1.0 / delta;
-        fpsState.history.push(currentFps);
-        if (fpsState.history.length > 30) fpsState.history.shift();
-        if (now - fpsState.lastTime > 250) {
-            const smoothedFps = fpsState.history.reduce((a, b) => a + b, 0) / fpsState.history.length;
-            propsRef.current.onFpsUpdate(smoothedFps, 1.0);
-            fpsState.lastTime = now;
-        }
-      };
-
-      const currentActiveWindow = props.projectionWindow || window;
-      animationFrameIdRef.current = currentActiveWindow.requestAnimationFrame(render);
-    }
-
-    return () => {
-      if (animationFrameIdRef.current) {
-        const currentActiveWindow = props.projectionWindow || window;
-        currentActiveWindow.cancelAnimationFrame(animationFrameIdRef.current);
-        animationFrameIdRef.current = null;
-      }
-    };
-  }, [props.projectionWindow, props.isSessionLoading]);
 
   useEffect(() => {
     const gl = glRef.current;
@@ -995,6 +826,16 @@ export function useWebGL(
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
             renderStateRef.current.videoTextures[key] = texture;
+            renderStateRef.current.videoFrameDirty[key] = true;
+
+            const el = userVideos[key].element;
+            if ('requestVideoFrameCallback' in el) {
+                const callback = () => {
+                    renderStateRef.current.videoFrameDirty[key] = true;
+                    (el as any).requestVideoFrameCallback(callback);
+                };
+                (el as any).requestVideoFrameCallback(callback);
+            }
         }
     });
 

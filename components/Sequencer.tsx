@@ -86,7 +86,7 @@ export const Sequencer = React.memo(function Sequencer() {
     return (
         <div className="sequencer">
             <div className="sequencer-row media-sequencer">
-                <div className="steps-container" ref={mediaStepsRef}>
+                <div className="steps-container stagger-children slide-up" ref={mediaStepsRef} style={{ '--stagger-base': '0.35s' } as React.CSSProperties}>
                     {mediaSequence.map((item, index) => {
                         const isModel = !!(item?.key && userModels[item.key]);
                         const isHtml = !!(item?.key && userHtml[item.key]);
@@ -121,7 +121,7 @@ export const Sequencer = React.memo(function Sequencer() {
                 )}
             </div>
              <div className="sequencer-row shader-sequencer">
-                <div className="steps-container">
+                <div className="steps-container stagger-children slide-up" style={{ '--stagger-base': '0.4s' } as React.CSSProperties}>
                     {shaderSequence.map((shaderKey, index) => (
                         <SequencerStep
                             key={`shader-${index}`}

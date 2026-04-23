@@ -25,3 +25,10 @@ public/assets/shaders-previews
 *.njsproj
 *.sln
 *.sw?
+
+# Firebase
+firebase-debug.log
+.agents/
+.claude/
+.github/
+skills

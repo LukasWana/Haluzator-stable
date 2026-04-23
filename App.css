@@ -231,3 +231,77 @@ body.css-fullscreen-mode .canvas-wrapper,
 body.css-fullscreen-mode #shader-canvas {
   border-radius: 0;
 }
+
+/* --- Initial UI Animations --- */
+@keyframes slideFadeInUp {
+  0% { opacity: 0; transform: translateY(20px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideFadeInDown {
+  0% { opacity: 0; transform: translateY(-20px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideFadeInLeft {
+  0% { opacity: 0; transform: translateX(20px); }
+  100% { opacity: 1; transform: translateX(0); }
+}
+
+.gui-element {
+  opacity: 0; /* Initially hidden */
+}
+
+/* Triggers when body gets .app-loaded class */
+body.app-loaded .gui-element {
+  animation-fill-mode: forwards;
+}
+
+body.app-loaded .gui-element.header-anim {
+  animation: slideFadeInDown 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation-delay: 0.2s; /* Trigger slightly after preloader starts fading */
+}
+
+body.app-loaded .gui-element.canvas-anim {
+  animation: slideFadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation-delay: 0.3s;
+}
+
+body.app-loaded .gui-element.controls-anim {
+  animation: slideFadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation-delay: 0.4s;
+}
+
+body.app-loaded .gui-element.panel-anim {
+  animation: slideFadeInLeft 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation-delay: 0.5s;
+}
+
+/* --- Micro-Animations for Individual Components --- */
+body.app-loaded .stagger-children > * {
+  opacity: 0;
+  animation: slideFadeInLeft 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+body.app-loaded .stagger-children.slide-up > * {
+  animation-name: slideFadeInUp;
+}
+
+body.app-loaded .stagger-children > *:nth-child(1) { animation-delay: calc(var(--stagger-base, 0.2s) + 0.05s); }
+body.app-loaded .stagger-children > *:nth-child(2) { animation-delay: calc(var(--stagger-base, 0.2s) + 0.10s); }
+body.app-loaded .stagger-children > *:nth-child(3) { animation-delay: calc(var(--stagger-base, 0.2s) + 0.15s); }
+body.app-loaded .stagger-children > *:nth-child(4) { animation-delay: calc(var(--stagger-base, 0.2s) + 0.20s); }
+body.app-loaded .stagger-children > *:nth-child(5) { animation-delay: calc(var(--stagger-base, 0.2s) + 0.25s); }
+body.app-loaded .stagger-children > *:nth-child(6) { animation-delay: calc(var(--stagger-base, 0.2s) + 0.30s); }
+body.app-loaded .stagger-children > *:nth-child(7) { animation-delay: calc(var(--stagger-base, 0.2s) + 0.35s); }
+body.app-loaded .stagger-children > *:nth-child(8) { animation-delay: calc(var(--stagger-base, 0.2s) + 0.40s); }
+body.app-loaded .stagger-children > *:nth-child(9) { animation-delay: calc(var(--stagger-base, 0.2s) + 0.45s); }
+body.app-loaded .stagger-children > *:nth-child(10) { animation-delay: calc(var(--stagger-base, 0.2s) + 0.50s); }
+body.app-loaded .stagger-children > *:nth-child(11) { animation-delay: calc(var(--stagger-base, 0.2s) + 0.55s); }
+body.app-loaded .stagger-children > *:nth-child(12) { animation-delay: calc(var(--stagger-base, 0.2s) + 0.60s); }
+body.app-loaded .stagger-children > *:nth-child(13) { animation-delay: calc(var(--stagger-base, 0.2s) + 0.65s); }
+body.app-loaded .stagger-children > *:nth-child(14) { animation-delay: calc(var(--stagger-base, 0.2s) + 0.70s); }
+body.app-loaded .stagger-children > *:nth-child(15) { animation-delay: calc(var(--stagger-base, 0.2s) + 0.75s); }
+body.app-loaded .stagger-children > *:nth-child(16) { animation-delay: calc(var(--stagger-base, 0.2s) + 0.80s); }
+body.app-loaded .stagger-children > *:nth-child(17) { animation-delay: calc(var(--stagger-base, 0.2s) + 0.85s); }
+body.app-loaded .stagger-children > *:nth-child(n+18) { animation-delay: calc(var(--stagger-base, 0.2s) + 0.90s); }

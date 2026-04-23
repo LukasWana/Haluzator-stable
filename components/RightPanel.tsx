@@ -46,7 +46,7 @@ export const RightPanel: React.FC = () => {
 
   return (
     <div 
-      className="right-panel"
+      className="right-panel gui-element panel-anim"
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
