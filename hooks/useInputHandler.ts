@@ -22,10 +22,30 @@ export const useInputHandler = () => {
 
     const midiAccessRef = useRef<any | null>(null);
 
+    const stateRef = useRef({
+        currentPage, pageControls, sequencerSteps, editableStep, defaultShaderKeys, userShaders,
+        handleControlChange, handlePageChange, setEditableStep, handleStepClick, togglePlay,
+        shiftLoop, triggerLiveVjStep, setSelectedItem, setLoopStart, setLoopEnd, toggleLoop, toggleAudio
+    });
+
+    useEffect(() => {
+        stateRef.current = {
+            currentPage, pageControls, sequencerSteps, editableStep, defaultShaderKeys, userShaders,
+            handleControlChange, handlePageChange, setEditableStep, handleStepClick, togglePlay,
+            shiftLoop, triggerLiveVjStep, setSelectedItem, setLoopStart, setLoopEnd, toggleLoop, toggleAudio
+        };
+    });
+
     // Keyboard shortcuts
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             if (isAddShaderModalOpen || isAddMediaModalOpen || isHelpModalOpen || e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+
+            const {
+                currentPage, pageControls, sequencerSteps, editableStep, defaultShaderKeys, userShaders,
+                handleControlChange, handlePageChange, setEditableStep, handleStepClick, togglePlay,
+                shiftLoop, triggerLiveVjStep, setSelectedItem
+            } = stateRef.current;
 
             const key = e.key.toLowerCase();
             const controls = pageControls[currentPage] || defaultControls;
@@ -86,7 +106,7 @@ export const useInputHandler = () => {
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [isAddShaderModalOpen, isAddMediaModalOpen, isHelpModalOpen, pageControls, currentPage, editableStep, sequencerSteps, handleControlChange, handlePageChange, setEditableStep, handleStepClick, togglePlay, shiftLoop, triggerLiveVjStep, setSelectedItem, defaultShaderKeys, userShaders]);
+    }, [isAddShaderModalOpen, isAddMediaModalOpen, isHelpModalOpen]);
 
     // MIDI Initialization and Handling
     useEffect(() => {
@@ -167,6 +187,11 @@ export const useInputHandler = () => {
         const handleMidiMessage = (e) => {
             const [status, ccNumber, ccValue] = e.message.data;
             if (status >= 176 && status <= 191) {
+                const {
+                    handleControlChange, togglePlay, toggleAudio, handlePageChange, triggerLiveVjStep,
+                    setLoopStart, setLoopEnd, toggleLoop, shiftLoop, currentPage, editableStep
+                } = stateRef.current;
+
                 if (ccNumber === 39) { // Tlačidlo "S" pod 8. knobom ako fyzický TOGGLE
                     handleControlChange('mandalaAffectsOverlay', ccValue > 0);
                     return;
@@ -208,5 +233,5 @@ export const useInputHandler = () => {
             if (currentInput) currentInput.onmidimessage = handleMidiMessage;
             return () => { if (currentInput) currentInput.onmidimessage = null; };
         }
-    }, [selectedMidiInputId, midiInputs, currentPage, editableStep, pageControls, togglePlay, toggleAudio, handlePageChange, triggerLiveVjStep, setLoopStart, setLoopEnd, toggleLoop, shiftLoop, handleControlChange]);
+    }, [selectedMidiInputId, midiInputs]);
 };

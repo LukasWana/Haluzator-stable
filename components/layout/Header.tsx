@@ -16,7 +16,7 @@ interface HeaderProps {
 }
 
 export const Header: React.FC<HeaderProps> = ({ fileInputRef, canvasRef, canvasWrapperRef, htmlOverlayRef }) => {
-  const { isFullscreen, fpsDisplay, setIsHelpModalOpen, handleFullscreenToggle, isRightPanelVisible, setIsRightPanelVisible, isControlsVisible, setIsControlsVisible, isSequencerVisible, setIsSequencerVisible } = useUI();
+  const { isFullscreen, setIsHelpModalOpen, handleFullscreenToggle, isRightPanelVisible, setIsRightPanelVisible, isControlsVisible, setIsControlsVisible, isSequencerVisible, setIsSequencerVisible } = useUI();
   const { isPlaying, togglePlay } = usePlayback();
   const { audioState, projectionWindow, toggleAudio, handleProjectionToggle } = useDevice();
   const { handleSaveSession } = useSession();
@@ -30,7 +30,7 @@ export const Header: React.FC<HeaderProps> = ({ fileInputRef, canvasRef, canvasW
       </div>
       <div className="session-controls">
         <div className="header-actions stagger-children" style={{ '--stagger-base': '0.2s' } as React.CSSProperties}>
-          <div className="fps-display">{fpsDisplay}</div>
+          <div id="fps-display" className="fps-display">000 FPS</div>
           <button className={`header-icon-button ${isPlaying ? 'active' : ''}`} onClick={togglePlay} title="Play/Pause (Spacebar)">
             {isPlaying ? '❚❚' : '▶'}
           </button>

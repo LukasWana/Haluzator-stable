@@ -163,7 +163,7 @@ export interface UIState {
     itemToDelete: { key: string; type: 'media' | 'shader' } | null;
     isProjectingTransition: boolean;
     shaderErrors: Record<string, string | null>;
-    fpsDisplay: string;
+
     selectedItem: string;
     isFullscreen: boolean;
     isSessionLoading: boolean;

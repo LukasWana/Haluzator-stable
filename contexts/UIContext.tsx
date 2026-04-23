@@ -15,7 +15,7 @@ export const UIProvider: React.FC<{ children: React.ReactNode }> = ({ children }
     const [itemToDelete, setItemToDelete] = useState<{ key: string; type: 'media' | 'shader' } | null>(null);
     const [isProjectingTransition, setIsProjectingTransition] = useState(false);
     const [shaderErrors, setShaderErrors] = useState<Record<string, string | null>>({});
-    const [fpsDisplay, setFpsDisplay] = useState('000 FPS');
+
     const [selectedItem, setSelectedItem] = useState('');
     const [isFullscreen, setIsFullscreen] = useState(false);
     const [isSessionLoading, setIsSessionLoading] = useState(false);
@@ -32,8 +32,8 @@ export const UIProvider: React.FC<{ children: React.ReactNode }> = ({ children }
     }, []);
 
     const handleFpsUpdate = useCallback((fps: number, scale: number) => {
-        // scale is no longer used
-        setFpsDisplay(`${Math.round(fps).toString().padStart(3, '0')} FPS`);
+        const el = document.getElementById('fps-display');
+        if (el) el.textContent = `${Math.round(fps).toString().padStart(3, '0')} FPS`;
     }, []);
     
     const handleFullscreenToggle = useCallback((canvasRef: React.RefObject<HTMLCanvasElement>) => {
@@ -69,7 +69,6 @@ export const UIProvider: React.FC<{ children: React.ReactNode }> = ({ children }
         itemToDelete,
         isProjectingTransition,
         shaderErrors,
-        fpsDisplay,
         selectedItem,
         isFullscreen,
         isSessionLoading,
@@ -104,7 +103,7 @@ export const UIProvider: React.FC<{ children: React.ReactNode }> = ({ children }
     }), [
         isAddShaderModalOpen, isAddMediaModalOpen, isAddHtmlModalOpen, isEditHtmlModalOpen, isModelSettingsModalOpen, isHtmlSettingsModalOpen, isHelpModalOpen,
         isConfirmDeleteModalOpen, itemToDelete,
-        isProjectingTransition, shaderErrors, fpsDisplay, selectedItem, isFullscreen,
+        isProjectingTransition, shaderErrors, selectedItem, isFullscreen,
         isSessionLoading, sessionLoadingDetails, isDraggingOver, initialFilesForModal,
         isRightPanelVisible, isControlsVisible, isSequencerVisible,
         handleShaderError, handleFpsUpdate, handleFullscreenToggle
